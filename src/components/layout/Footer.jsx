@@ -120,7 +120,7 @@ function Footer() {
       {/* Bottom Legal */}
       <div className="container">
         <div className="footer-bottom">
-          <p>© 2024 Doon Silk. All Rights Reserved.</p>
+          <p>© 2026 Saurabh Bisht. All Rights Reserved.</p>
           <div className="footer-legal-links">
             <a href="#privacy">Privacy Policy</a>
             <span style={{ opacity: 0.3 }}>|</span>

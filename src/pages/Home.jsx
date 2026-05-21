@@ -2,7 +2,6 @@ import { motion } from 'framer-motion'
 import Header from '../components/layout/Header.jsx'
 import Footer from '../components/layout/Footer.jsx'
 import HeroSlider from '../components/sections/HeroSlider.jsx'
-import TeamSection from '../components/sections/TeamSection.jsx'
 import CategorySection from '../components/sections/CategorySection.jsx'
 import BrandStory from '../components/sections/BrandStory.jsx'
 import CollectionShowcase from '../components/sections/CollectionShowcase.jsx'
@@ -17,7 +16,6 @@ function Home() {
       <Header />
       <main>
         <HeroSlider />
-        <TeamSection />
         <CategorySection />
         <BrandStory />
         <CollectionShowcase />
