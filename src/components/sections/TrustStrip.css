@@ -1,0 +1,126 @@
+.trust-strip {
+  background-color: var(--color-maroon-dark);
+  padding-block: var(--space-8);
+  border-bottom: 1px solid rgba(245, 233, 220, 0.05);
+}
+
+.trust-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: var(--space-6);
+}
+
+@media (min-width: 480px) {
+  .trust-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .trust-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .trust-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--space-4);
+  }
+}
+
+.trust-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+  gap: var(--space-4);
+  color: var(--color-cream);
+  padding: var(--space-2);
+}
+
+@media (max-width: 479px) {
+  .trust-strip {
+    padding-block: var(--space-6);
+  }
+
+  .trust-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-5) var(--space-4);
+  }
+
+  .trust-item {
+    flex-direction: column;
+    justify-content: flex-start;
+    text-align: center;
+    gap: var(--space-2);
+    padding: 0;
+  }
+
+  .trust-icon svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  .trust-title {
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+  }
+
+  .trust-subtitle {
+    max-width: 140px;
+    margin-inline: auto;
+    font-size: 0.64rem;
+    line-height: 1.35;
+  }
+
+  .trust-item:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: min(100%, 180px);
+  }
+}
+
+@media (max-width: 340px) {
+  .trust-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.trust-icon {
+  color: var(--color-cream-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.trust-icon svg {
+  width: 36px;
+  height: 36px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+}
+
+.trust-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.trust-title {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+}
+
+.trust-subtitle {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  color: rgba(245, 233, 220, 0.7);
+  line-height: 1.4;
+}

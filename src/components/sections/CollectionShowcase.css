@@ -1,0 +1,281 @@
+.collection-section {
+  background-color: var(--color-cream-light);
+  overflow: hidden;
+  position: relative;
+}
+
+.collection-header {
+  text-align: center;
+  margin-bottom: var(--space-12);
+}
+
+.collection-slider-container {
+  position: relative;
+  padding-inline: var(--space-4);
+}
+
+@media (min-width: 1024px) {
+  .collection-slider-container {
+    padding-inline: var(--space-12);
+  }
+}
+
+.collection-swiper {
+  padding-bottom: var(--space-6);
+}
+
+/* Custom Navigation Arrows */
+.collection-prev,
+.collection-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-maroon);
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  font-size: var(--text-xl);
+  z-index: 10;
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.collection-prev {
+  left: 0;
+}
+
+.collection-next {
+  right: 0;
+}
+
+.collection-prev:hover,
+.collection-next:hover {
+  color: var(--color-gold);
+}
+
+/* Collection Cards */
+.collection-card {
+  position: relative;
+  display: flex;
+  height: 380px;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  background-size: cover;
+  background-position: center;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+  margin-top: 40px; /* Make room for the overflowing head */
+}
+
+.collection-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Theme Colors */
+.theme-ivory {
+  color: #3A3026;
+}
+
+.theme-red {
+  color: var(--color-cream);
+}
+
+.theme-blue {
+  color: var(--color-cream);
+}
+
+/* Mandala Icon */
+.collection-mandala {
+  margin-bottom: var(--space-4);
+  color: inherit;
+  opacity: 0.7;
+}
+
+/* Model Wrapper */
+.collection-model-wrapper {
+  position: absolute;
+  top: -90px; /* Extends above the card and gives hover room around the head */
+  bottom: 0;
+  right: -16%; /* Keep the model visually on the side of the card */
+  height: calc(100% + 90px);
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.collection-model {
+  height: calc(100% - 50px);
+  width: auto;
+  object-fit: contain;
+  object-position: bottom right;
+  transform-origin: bottom right;
+  transition: transform var(--transition-slow);
+}
+
+/* Card Content */
+.collection-content {
+  position: relative;
+  z-index: 2;
+  width: 60%;
+  padding: var(--space-8) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.collection-title {
+  font-family: var(--font-display);
+  font-size: clamp(var(--text-xl), 3vw, var(--text-3xl));
+  font-weight: 400;
+  margin-bottom: var(--space-1);
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+}
+
+.collection-label {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-6);
+  opacity: 0.8;
+}
+
+.collection-subtitle {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  margin-bottom: var(--space-8);
+  opacity: 0.9;
+  max-width: 220px;
+}
+
+.collection-explore {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+
+.collection-explore-arrow {
+  transition: transform var(--transition-base);
+}
+
+.collection-card:hover .collection-explore-arrow {
+  transform: translateX(5px);
+}
+
+@media (max-width: 900px) {
+  .collection-header {
+    margin-bottom: var(--space-8);
+  }
+
+  .collection-slider-container {
+    padding-inline: var(--space-8);
+  }
+
+  .collection-prev,
+  .collection-next {
+    width: 38px;
+    height: 38px;
+    background: rgba(250, 244, 236, 0.82);
+    border-color: rgba(110, 30, 30, 0.18);
+  }
+
+  .collection-card {
+    height: 340px;
+    margin-top: 56px;
+  }
+
+  .collection-model-wrapper {
+    top: -56px;
+    right: -18%;
+    height: calc(100% + 56px);
+  }
+
+  .collection-model {
+    height: calc(100% - 28px);
+  }
+
+  .collection-content {
+    width: 68%;
+    padding: var(--space-6);
+  }
+}
+
+@media (max-width: 520px) {
+  .collection-slider-container {
+    padding-inline: var(--space-4);
+  }
+
+  .collection-card {
+    height: 318px;
+    margin-top: 42px;
+    overflow: hidden;
+  }
+
+  .collection-card:hover {
+    transform: none;
+  }
+
+  .collection-model-wrapper {
+    top: -42px;
+    right: -30%;
+    height: calc(100% + 42px);
+  }
+
+  .collection-content {
+    width: 72%;
+    padding: var(--space-5);
+  }
+
+  .collection-mandala {
+    margin-bottom: var(--space-3);
+    transform: scale(0.82);
+    transform-origin: left center;
+  }
+
+  .collection-title {
+    font-size: clamp(1.7rem, 11vw, 2.45rem);
+  }
+
+  .collection-label {
+    margin-bottom: var(--space-4);
+    font-size: 0.58rem;
+    letter-spacing: 0.22em;
+  }
+
+  .collection-subtitle {
+    max-width: 165px;
+    margin-bottom: var(--space-5);
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+}
+
+@media (max-width: 380px) {
+  .collection-card {
+    height: 292px;
+  }
+
+  .collection-content {
+    width: 76%;
+    padding: var(--space-4);
+  }
+
+  .collection-model-wrapper {
+    right: -38%;
+  }
+}

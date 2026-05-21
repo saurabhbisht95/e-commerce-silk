@@ -1,0 +1,221 @@
+.footer {
+  background-color: var(--color-maroon-dark);
+  color: var(--color-cream);
+  padding-top: var(--space-16);
+  position: relative;
+  overflow: hidden;
+}
+
+.footer-top {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-10);
+  margin-bottom: var(--space-12);
+}
+
+@media (min-width: 768px) {
+  .footer-top {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .footer-top {
+    grid-template-columns: 2fr 1.2fr 1.2fr 1.5fr;
+    gap: var(--space-8);
+  }
+}
+
+.footer-brand {
+  display: flex;
+  flex-direction: column;
+}
+
+.footer-logo {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  color: var(--color-gold);
+  margin-bottom: var(--space-2);
+  line-height: 1.1;
+  text-decoration: none;
+}
+
+.footer-logo span {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  letter-spacing: 0.25em;
+  color: var(--color-cream);
+  text-transform: uppercase;
+  margin-top: var(--space-1);
+}
+
+.footer-tagline {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: rgba(245, 233, 220, 0.7);
+  line-height: 1.6;
+  max-width: 300px;
+  margin-bottom: var(--space-6);
+}
+
+.footer-socials {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.social-icon {
+  color: rgba(245, 233, 220, 0.8);
+  transition: color var(--transition-base), transform var(--transition-base);
+}
+
+.social-icon:hover {
+  color: var(--color-gold);
+  transform: translateY(-2px);
+}
+
+.social-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.footer-col-title {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+  margin-bottom: var(--space-6);
+}
+
+.footer-links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.footer-link {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: rgba(245, 233, 220, 0.8);
+  text-decoration: none;
+  transition: color var(--transition-base), transform var(--transition-base);
+  width: fit-content;
+}
+
+.footer-link:hover {
+  color: var(--color-gold);
+  transform: translateX(4px);
+}
+
+.footer-newsletter-text {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: rgba(245, 233, 220, 0.8);
+  line-height: 1.6;
+  margin-bottom: var(--space-4);
+}
+
+.newsletter-form {
+  display: flex;
+  border-bottom: 1px solid rgba(245, 233, 220, 0.3);
+  padding-bottom: var(--space-2);
+  transition: border-color var(--transition-base);
+}
+
+.newsletter-form:focus-within {
+  border-color: var(--color-gold);
+}
+
+.newsletter-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--color-cream);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+}
+
+.newsletter-input::placeholder {
+  color: rgba(245, 233, 220, 0.4);
+}
+
+.newsletter-btn {
+  color: var(--color-gold);
+  padding-left: var(--space-2);
+  transition: transform var(--transition-base);
+}
+
+.newsletter-btn:hover {
+  transform: translateX(4px);
+}
+
+.newsletter-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.village-pattern {
+  color: rgba(200, 169, 106, 0.4); /* Gold pattern */
+  margin-bottom: -1px; /* seamless connection to border */
+}
+
+.footer-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: var(--space-6);
+  border-top: 1px solid rgba(245, 233, 220, 0.1);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: rgba(245, 233, 220, 0.5);
+  gap: var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .footer-bottom {
+    flex-direction: row;
+  }
+}
+
+.footer-legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+.footer-legal-links a {
+  transition: color var(--transition-base);
+}
+
+.footer-legal-links a:hover {
+  color: var(--color-gold);
+}
+
+@media (max-width: 520px) {
+  .footer {
+    padding-top: var(--space-12);
+  }
+
+  .footer-top {
+    gap: var(--space-8);
+    margin-bottom: var(--space-10);
+  }
+
+  .footer-col-title {
+    margin-bottom: var(--space-4);
+  }
+
+  .footer-bottom {
+    text-align: center;
+  }
+}
