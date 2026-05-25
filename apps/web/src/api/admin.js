@@ -21,7 +21,10 @@ export const adminApi = {
 
   async listCategories() {
     const payload = await apiRequest('/categories')
-    return payload.data?.categories || []
+    return (payload.data?.categories || []).map(category => ({
+      ...category,
+      id: category.id || category._id,
+    }))
   },
 
   async createCategory(body) {
