@@ -1,16 +1,69 @@
-# React + Vite
+# Doon Silk MERN E-commerce
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Existing Doon Silk React frontend plus production-ready Express/MongoDB backend.
 
-Currently, two official plugins are available:
+## Local Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Start the API:
 
-## React Compiler
+```bash
+cd apps/api
+cp .env.example .env
+npm install
+npm run create:admin
+npm run seed
+npm run dev
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Start the frontend:
 
-## Expanding the ESLint configuration
+```bash
+cd apps/web
+cp .env.example .env
+npm install
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Frontend requests use `/api/v1`; Vite proxies `/api` to `http://localhost:5000`.
+
+## Required API Environment
+
+For Atlas:
+
+```env
+MONGODB_URI=mongodb+srv://<db_user>:<encoded_password>@doon-silk.ybahakx.mongodb.net/doon_silk?retryWrites=true&w=majority&appName=Doon-silk
+MONGODB_DB_NAME=doon_silk
+```
+
+Set strong production values for:
+
+```env
+JWT_ACCESS_SECRET=
+JWT_REFRESH_SECRET=
+COOKIE_SECRET=
+CSRF_SECRET=
+CORS_ORIGINS=
+FRONTEND_URL=
+COOKIE_SECURE=true
+ENABLE_CSRF=true
+```
+
+## Production
+
+Build the frontend and run the API with PM2, Render, Railway, Vercel + hosted API, or your preferred Node host. Set `VITE_API_URL` to your production API `/api/v1` URL when frontend and backend are on separate domains.
+
+## Useful URLs
+
+```text
+Frontend: http://localhost:5173
+API health: http://localhost:5000/healthz
+Swagger: http://localhost:5000/api-docs
+Products API: http://localhost:5000/api/v1/products
+```
+
+## Verification
+
+```bash
+cd apps/api && npm test
+cd apps/web && npm run build
+```

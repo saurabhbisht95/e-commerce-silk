@@ -1,0 +1,130 @@
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a customer account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                phone: { type: string }
+                password: { type: string, minLength: 8 }
+      responses:
+        "201": { description: Account created }
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and receive JWT cookies plus access token
+      responses:
+        "200": { description: Login successful }
+  /auth/refresh-token:
+    post:
+      tags: [Auth]
+      summary: Rotate refresh token and issue a new access token
+      responses:
+        "200": { description: Token refreshed }
+  /products:
+    get:
+      tags: [Products]
+      summary: Search, filter, sort, and paginate products
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: category
+          schema: { type: string }
+        - in: query
+          name: minPrice
+          schema: { type: number }
+        - in: query
+          name: maxPrice
+          schema: { type: number }
+        - in: query
+          name: sort
+          schema: { type: string, enum: [newest, oldest, price_asc, price_desc, rating, popularity] }
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: limit
+          schema: { type: integer }
+      responses:
+        "200": { description: Products fetched }
+    post:
+      tags: [Products]
+      summary: Create a product
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Product created }
+  /products/{slugOrId}:
+    get:
+      tags: [Products]
+      summary: Fetch a product by slug or Mongo id
+      parameters:
+        - in: path
+          name: slugOrId
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Product fetched }
+  /cart:
+    get:
+      tags: [Cart]
+      summary: Fetch current cart. Guests must pass x-guest-id header or guestId query.
+      responses:
+        "200": { description: Cart fetched }
+    delete:
+      tags: [Cart]
+      summary: Clear cart
+      responses:
+        "200": { description: Cart cleared }
+  /cart/items:
+    post:
+      tags: [Cart]
+      summary: Add item to cart
+      responses:
+        "200": { description: Item added }
+    patch:
+      tags: [Cart]
+      summary: Update cart item quantity
+      responses:
+        "200": { description: Cart item updated }
+    delete:
+      tags: [Cart]
+      summary: Remove item from cart
+      responses:
+        "200": { description: Cart item removed }
+  /orders:
+    post:
+      tags: [Orders]
+      summary: Create order from authenticated user's cart
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Order created }
+    get:
+      tags: [Orders]
+      summary: Admin order list
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Orders fetched }
+  /payments:
+    post:
+      tags: [Payments]
+      summary: Initialize online payment with Stripe, Razorpay, or PayPal
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Payment initialized }
+  /admin/dashboard:
+    get:
+      tags: [Admin]
+      summary: Dashboard stats for admins
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Dashboard stats fetched }

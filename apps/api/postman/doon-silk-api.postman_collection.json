@@ -1,0 +1,82 @@
+{
+  "info": {
+    "name": "Doon Silk API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api/v1" },
+    { "key": "accessToken", "value": "" },
+    { "key": "guestId", "value": "guest-local-001" }
+  ],
+  "item": [
+    {
+      "name": "Auth - Register",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/auth/register",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Doon Customer\",\n  \"email\": \"customer@example.com\",\n  \"password\": \"StrongPass123\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Auth - Login",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"customer@example.com\",\n  \"password\": \"StrongPass123\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Products - List",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/products?limit=20&sort=newest"
+      }
+    },
+    {
+      "name": "Cart - Add Item",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-guest-id", "value": "{{guestId}}" }
+        ],
+        "url": "{{baseUrl}}/cart/items",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"productId\": \"REPLACE_PRODUCT_ID\",\n  \"quantity\": 1\n}"
+        }
+      }
+    },
+    {
+      "name": "Orders - Create",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": "{{baseUrl}}/orders",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"shippingAddress\": {\n    \"fullName\": \"Doon Customer\",\n    \"phone\": \"9999999999\",\n    \"line1\": \"Rajpur Road\",\n    \"city\": \"Dehradun\",\n    \"state\": \"Uttarakhand\",\n    \"postalCode\": \"248001\",\n    \"country\": \"India\"\n  },\n  \"paymentProvider\": \"cod\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Admin - Dashboard",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/admin/dashboard"
+      }
+    }
+  ]
+}
