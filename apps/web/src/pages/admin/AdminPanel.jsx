@@ -119,7 +119,7 @@ function AdminPanel() {
   const loadAdminData = async () => {
     const [dashboard, productResult, categoryResult, bannerResult] = await Promise.all([
       adminApi.dashboard().catch(() => null),
-      adminApi.listProducts({ limit: 100, status: 'active' }),
+      adminApi.listProducts({ limit: 100 }),
       adminApi.listCategories(),
       adminApi.listBanners(),
     ])
