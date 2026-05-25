@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Autoplay, Pagination, Navigation } from 'swiper/modules'
@@ -10,6 +10,7 @@ import 'swiper/css/pagination'
 import 'swiper/css/navigation'
 
 import { HERO_SLIDES } from '../../data/siteData'
+import { bannerApi } from '../../api/banners'
 import './HeroSlider.css'
 import heroSideArt from '../../assets/herosideart.webp'
 
@@ -146,6 +147,29 @@ const ArrowIcon = ({ dir = 'right' }) => (
 function HeroSlider() {
   const prevRef = useRef(null)
   const nextRef = useRef(null)
+  const [managedSlides, setManagedSlides] = useState([])
+
+  useEffect(() => {
+    let isMounted = true
+
+    bannerApi
+      .list()
+      .then(banners => {
+        if (isMounted) setManagedSlides(banners.filter(banner => banner.modelImage))
+      })
+      .catch(() => {
+        if (isMounted) setManagedSlides([])
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const slides = useMemo(
+    () => (managedSlides.length ? managedSlides : HERO_SLIDES),
+    [managedSlides]
+  )
 
   return (
     <section className="hs-section" aria-label="Hero slider">
@@ -171,7 +195,7 @@ function HeroSlider() {
         loop={true}
         className="hs-swiper"
       >
-        {HERO_SLIDES.map((slide, index) => (
+        {slides.map((slide, index) => (
           <SwiperSlide key={slide.id} className="hs-slide">
             {({ isActive }) => (
               <div className="hs-slide__inner">
@@ -280,7 +304,7 @@ function HeroSlider() {
                 {/* ── RIGHT PANEL: Weaving / product visual ── */}
                 <div className="hs-panel hs-panel--right">
                   <div className="hs-arch-compose">
-                    <ArchMaskedImage src={slide.sideImage} />
+                    <ArchMaskedImage src={slide.sideImage || slide.modelImage} />
                     <div className="hs-arch-frame-overlay" aria-hidden="true">
                       <ArchFrame />
                     </div>
@@ -302,7 +326,7 @@ function HeroSlider() {
                         </span>
                         <span className="hs-counter__sep" />
                         <span className="hs-counter__total">
-                          {String(HERO_SLIDES.length).padStart(2, '0')}
+                          {String(slides.length).padStart(2, '0')}
                         </span>
                       </motion.div>
                     )}

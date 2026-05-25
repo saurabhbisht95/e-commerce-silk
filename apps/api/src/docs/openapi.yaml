@@ -74,6 +74,41 @@ paths:
           schema: { type: string }
       responses:
         "200": { description: Product fetched }
+  /banners:
+    get:
+      tags: [Banners]
+      summary: Fetch active homepage banners. Frontend falls back to static slides when none exist.
+      responses:
+        "200": { description: Banners fetched }
+    post:
+      tags: [Banners]
+      summary: Create an admin-managed homepage banner
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Banner created }
+  /banners/{id}:
+    put:
+      tags: [Banners]
+      summary: Update an admin-managed homepage banner
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Banner updated }
+    delete:
+      tags: [Banners]
+      summary: Soft-delete an admin-managed homepage banner
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Banner deleted }
   /cart:
     get:
       tags: [Cart]

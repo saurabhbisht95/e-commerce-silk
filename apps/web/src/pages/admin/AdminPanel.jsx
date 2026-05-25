@@ -21,6 +21,19 @@ const emptyForm = {
   trending: false,
 }
 
+const emptyBannerForm = {
+  id: '',
+  headlineOne: '',
+  headlineTwo: '',
+  subtext: '',
+  cta: 'Explore Collection',
+  ctaHref: '/collections',
+  modelImageUrl: '',
+  sideImageUrl: '',
+  sortOrder: '0',
+  isActive: true,
+}
+
 const buildProductPayload = (form, uploadedImages = []) => {
   const images = uploadedImages.length
     ? uploadedImages
@@ -46,13 +59,49 @@ const buildProductPayload = (form, uploadedImages = []) => {
   }
 }
 
+const buildBannerPayload = (form, uploads = {}) => {
+  const headline = [form.headlineOne, form.headlineTwo]
+    .map(line => line.trim())
+    .filter(Boolean)
+  const modelImageUrl = uploads.model?.url || form.modelImageUrl
+  const sideImageUrl = uploads.side?.url || form.sideImageUrl
+  const alt = headline.join(' ') || 'Doon Silk banner'
+
+  return {
+    headline,
+    subtext: form.subtext,
+    cta: form.cta,
+    ctaHref: form.ctaHref,
+    modelImage: {
+      url: modelImageUrl,
+      publicId: uploads.model?.publicId,
+      alt,
+    },
+    ...(sideImageUrl
+      ? {
+          sideImage: {
+            url: sideImageUrl,
+            publicId: uploads.side?.publicId,
+            alt: `${alt} detail`,
+          },
+        }
+      : {}),
+    sortOrder: Number(form.sortOrder || 0),
+    isActive: form.isActive,
+  }
+}
+
 function AdminPanel() {
   const { user, isAdmin } = useAuth()
   const [stats, setStats] = useState(null)
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
+  const [banners, setBanners] = useState([])
   const [form, setForm] = useState(emptyForm)
+  const [bannerForm, setBannerForm] = useState(emptyBannerForm)
   const [files, setFiles] = useState([])
+  const [bannerModelFile, setBannerModelFile] = useState(null)
+  const [bannerSideFile, setBannerSideFile] = useState(null)
   const [newCategory, setNewCategory] = useState('')
   const [message, setMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -62,15 +111,22 @@ function AdminPanel() {
     [form.id, products]
   )
 
+  const selectedBanner = useMemo(
+    () => banners.find(banner => banner.id === bannerForm.id),
+    [bannerForm.id, banners]
+  )
+
   const loadAdminData = async () => {
-    const [dashboard, productResult, categoryResult] = await Promise.all([
+    const [dashboard, productResult, categoryResult, bannerResult] = await Promise.all([
       adminApi.dashboard().catch(() => null),
       adminApi.listProducts({ limit: 100, status: 'active' }),
       adminApi.listCategories(),
+      adminApi.listBanners(),
     ])
     setStats(dashboard)
     setProducts(productResult.products)
     setCategories(categoryResult)
+    setBanners(bannerResult)
   }
 
   useEffect(() => {
@@ -82,6 +138,11 @@ function AdminPanel() {
   const updateField = event => {
     const { name, value, type, checked } = event.target
     setForm(current => ({ ...current, [name]: type === 'checkbox' ? checked : value }))
+  }
+
+  const updateBannerField = event => {
+    const { name, value, type, checked } = event.target
+    setBannerForm(current => ({ ...current, [name]: type === 'checkbox' ? checked : value }))
   }
 
   const editProduct = product => {
@@ -109,6 +170,31 @@ function AdminPanel() {
     setFiles([])
   }
 
+  const editBanner = banner => {
+    const headline = banner.headline || []
+    setBannerForm({
+      id: banner.id,
+      headlineOne: headline[0] || '',
+      headlineTwo: headline[1] || '',
+      subtext: banner.subtext || '',
+      cta: banner.cta || 'Explore Collection',
+      ctaHref: banner.ctaHref || '/collections',
+      modelImageUrl: banner.modelImage || '',
+      sideImageUrl: banner.sideImage || '',
+      sortOrder: String(banner.sortOrder ?? 0),
+      isActive: Boolean(banner.isActive),
+    })
+    setBannerModelFile(null)
+    setBannerSideFile(null)
+    setMessage('')
+  }
+
+  const resetBannerForm = () => {
+    setBannerForm(emptyBannerForm)
+    setBannerModelFile(null)
+    setBannerSideFile(null)
+  }
+
   const saveProduct = async event => {
     event.preventDefault()
     setIsSubmitting(true)
@@ -121,6 +207,31 @@ function AdminPanel() {
       await loadAdminData()
       resetForm()
       setMessage('Product saved successfully.')
+    } catch (error) {
+      setMessage(error.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const saveBanner = async event => {
+    event.preventDefault()
+    setIsSubmitting(true)
+    setMessage('')
+    try {
+      const [modelUploads, sideUploads] = await Promise.all([
+        bannerModelFile ? adminApi.uploadImages([bannerModelFile]) : [],
+        bannerSideFile ? adminApi.uploadImages([bannerSideFile]) : [],
+      ])
+      const payload = buildBannerPayload(bannerForm, {
+        model: modelUploads[0],
+        side: sideUploads[0],
+      })
+      if (bannerForm.id) await adminApi.updateBanner(bannerForm.id, payload)
+      else await adminApi.createBanner(payload)
+      await loadAdminData()
+      resetBannerForm()
+      setMessage('Banner saved successfully.')
     } catch (error) {
       setMessage(error.message)
     } finally {
@@ -154,6 +265,18 @@ function AdminPanel() {
     }
   }
 
+  const deleteBanner = async banner => {
+    setMessage('')
+    try {
+      await adminApi.deleteBanner(banner.id)
+      await loadAdminData()
+      if (bannerForm.id === banner.id) resetBannerForm()
+      setMessage('Banner removed successfully. Static hero slides will be used if no active banners remain.')
+    } catch (error) {
+      setMessage(error.message)
+    }
+  }
+
   if (!user || !isAdmin) {
     return (
       <>
@@ -175,7 +298,7 @@ function AdminPanel() {
       <main className="commerce-page">
         <div className="commerce-shell">
           <h1 className="commerce-title">Admin Panel</h1>
-          <p className="commerce-copy">Manage products, stock, categories, and images uploaded through the backend.</p>
+          <p className="commerce-copy">Manage products, stock, categories, images, and optional homepage banners uploaded through the backend.</p>
 
           {message && <div className="commerce-alert">{message}</div>}
 
@@ -299,6 +422,103 @@ function AdminPanel() {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </section>
+          </div>
+
+          <div className="admin-layout" style={{ marginTop: 28 }}>
+            <section className="commerce-form commerce-form--wide">
+              <h2>{selectedBanner ? 'Edit Banner' : 'Create Banner'}</h2>
+
+              <form className="commerce-form commerce-form--wide" onSubmit={saveBanner}>
+                <label className="commerce-field">
+                  <span>Headline Line 1</span>
+                  <input name="headlineOne" value={bannerForm.headlineOne} onChange={updateBannerField} required />
+                </label>
+                <label className="commerce-field">
+                  <span>Headline Line 2</span>
+                  <input name="headlineTwo" value={bannerForm.headlineTwo} onChange={updateBannerField} />
+                </label>
+                <label className="commerce-field">
+                  <span>Subtext</span>
+                  <textarea name="subtext" value={bannerForm.subtext} onChange={updateBannerField} />
+                </label>
+                <div className="commerce-grid">
+                  <label className="commerce-field">
+                    <span>CTA Text</span>
+                    <input name="cta" value={bannerForm.cta} onChange={updateBannerField} required />
+                  </label>
+                  <label className="commerce-field">
+                    <span>CTA Link</span>
+                    <input name="ctaHref" value={bannerForm.ctaHref} onChange={updateBannerField} required />
+                  </label>
+                </div>
+                <label className="commerce-field">
+                  <span>Main Image URL</span>
+                  <input name="modelImageUrl" value={bannerForm.modelImageUrl} onChange={updateBannerField} placeholder="Optional if uploading a main image" />
+                </label>
+                <label className="commerce-field">
+                  <span>Upload Main Image</span>
+                  <input type="file" accept="image/*" onChange={event => setBannerModelFile(event.target.files?.[0] || null)} />
+                </label>
+                <label className="commerce-field">
+                  <span>Side Image URL</span>
+                  <input name="sideImageUrl" value={bannerForm.sideImageUrl} onChange={updateBannerField} placeholder="Optional; main image is reused if empty" />
+                </label>
+                <label className="commerce-field">
+                  <span>Upload Side Image</span>
+                  <input type="file" accept="image/*" onChange={event => setBannerSideFile(event.target.files?.[0] || null)} />
+                </label>
+                <div className="commerce-grid">
+                  <label className="commerce-field">
+                    <span>Sort Order</span>
+                    <input name="sortOrder" type="number" value={bannerForm.sortOrder} onChange={updateBannerField} />
+                  </label>
+                  <label className="commerce-field">
+                    <span>Status</span>
+                    <label><input name="isActive" type="checkbox" checked={bannerForm.isActive} onChange={updateBannerField} /> Active</label>
+                  </label>
+                </div>
+                <div className="commerce-actions">
+                  <button className="commerce-btn" type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? 'Saving...' : 'Save Banner'}
+                  </button>
+                  <button className="commerce-btn commerce-btn--ghost" type="button" onClick={resetBannerForm}>New Banner</button>
+                </div>
+              </form>
+            </section>
+
+            <section className="commerce-table-wrap">
+              <h2>Banners</h2>
+              <table className="commerce-table">
+                <thead>
+                  <tr>
+                    <th>Image</th>
+                    <th>Headline</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {banners.map(banner => (
+                    <tr key={banner.id}>
+                      <td><img className="admin-thumb" src={banner.modelImage} alt={banner.headline?.join(' ') || 'Banner'} /></td>
+                      <td>{banner.headline?.join(' ')}<br /><small>{banner.ctaHref}</small></td>
+                      <td>{banner.isActive ? 'Active' : 'Inactive'}</td>
+                      <td>
+                        <div className="commerce-actions">
+                          <button className="commerce-btn commerce-btn--ghost" type="button" onClick={() => editBanner(banner)}>Edit</button>
+                          <button className="commerce-btn commerce-btn--ghost" type="button" onClick={() => deleteBanner(banner)}>Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {!banners.length && (
+                    <tr>
+                      <td colSpan="4">No uploaded banners yet. The current static hero slides remain active.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </section>

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import addressRoutes from './address.routes.js';
 import adminRoutes from './admin.routes.js';
 import authRoutes from './auth.routes.js';
+import bannerRoutes from './banner.routes.js';
 import cartRoutes from './cart.routes.js';
 import categoryRoutes from './category.routes.js';
 import couponRoutes from './coupon.routes.js';
@@ -18,6 +19,7 @@ const router = Router();
 
 router.use('/security', securityRoutes);
 router.use('/auth', authRoutes);
+router.use('/banners', bannerRoutes);
 router.use('/users', userRoutes);
 router.use('/addresses', addressRoutes);
 router.use('/products', productRoutes);

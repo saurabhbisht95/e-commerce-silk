@@ -1,4 +1,5 @@
 import { apiRequest } from './http'
+import { bannerApi } from './banners'
 
 export const adminApi = {
   async dashboard() {
@@ -65,5 +66,31 @@ export const adminApi = {
       body: formData,
     })
     return payload.data?.images || []
+  },
+
+  async listBanners() {
+    return bannerApi.list({ includeInactive: true })
+  },
+
+  async createBanner(body) {
+    const payload = await apiRequest('/banners', {
+      method: 'POST',
+      body,
+    })
+    return payload.data?.banner || null
+  },
+
+  async updateBanner(id, body) {
+    const payload = await apiRequest(`/banners/${id}`, {
+      method: 'PUT',
+      body,
+    })
+    return payload.data?.banner || null
+  },
+
+  async deleteBanner(id) {
+    await apiRequest(`/banners/${id}`, {
+      method: 'DELETE',
+    })
   },
 }
