@@ -21,4 +21,19 @@ export const orderApi = {
     })
     return payload.data?.order || null
   },
+
+  async requestReturn(orderId, reason) {
+    const payload = await apiRequest(`/orders/me/${orderId}/return`, {
+      method: 'POST',
+      body: { reason },
+    })
+    return payload.data?.order || null
+  },
+
+  async reorder(orderId) {
+    const payload = await apiRequest(`/orders/me/${orderId}/reorder`, {
+      method: 'POST',
+    })
+    return payload.data?.cart || null
+  },
 }

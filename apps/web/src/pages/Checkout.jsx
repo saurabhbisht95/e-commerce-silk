@@ -1,10 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Header from '../components/layout/Header.jsx'
 import Footer from '../components/layout/Footer.jsx'
+import { addressApi } from '../api/addresses'
 import { orderApi } from '../api/orders'
 import { useAuth } from '../context/authContext'
 import { useCommerce } from '../context/commerceContext'
+import { useToast } from '../context/toastContext'
+import { toUserMessage } from '../utils/apiMessages'
+import { getFirstValidationMessage, validateAddressForm } from '../utils/validation'
 import './CommercePages.css'
 
 const initialAddress = {
@@ -20,29 +24,100 @@ const initialAddress = {
 
 function Checkout() {
   const navigate = useNavigate()
+  const toast = useToast()
   const { user } = useAuth()
   const { cart, cartProducts, refreshCart } = useCommerce()
   const [shippingAddress, setShippingAddress] = useState(initialAddress)
+  const [savedAddresses, setSavedAddresses] = useState([])
   const [message, setMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  useEffect(() => {
+    let isMounted = true
+    if (!user) return undefined
+
+    addressApi.list()
+      .then(addresses => {
+        if (!isMounted) return
+        setSavedAddresses(addresses)
+        const defaultAddress = addresses.find(address => address.isDefault) || addresses[0]
+        if (defaultAddress) {
+          setShippingAddress({
+            fullName: defaultAddress.fullName || '',
+            phone: defaultAddress.phone || '',
+            line1: defaultAddress.line1 || '',
+            line2: defaultAddress.line2 || '',
+            city: defaultAddress.city || '',
+            state: defaultAddress.state || '',
+            postalCode: defaultAddress.postalCode || '',
+            country: defaultAddress.country || 'India',
+          })
+        }
+      })
+      .catch(() => null)
+
+    return () => {
+      isMounted = false
+    }
+  }, [user])
 
   const updateField = event => {
     setShippingAddress(current => ({ ...current, [event.target.name]: event.target.value }))
   }
 
+  const useSavedAddress = event => {
+    const address = savedAddresses.find(item => item.id === event.target.value)
+    if (!address) return
+    setShippingAddress({
+      fullName: address.fullName || '',
+      phone: address.phone || '',
+      line1: address.line1 || '',
+      line2: address.line2 || '',
+      city: address.city || '',
+      state: address.state || '',
+      postalCode: address.postalCode || '',
+      country: address.country || 'India',
+    })
+  }
+
   const submitOrder = async event => {
     event.preventDefault()
+    if (!user) {
+      const validationMessage = 'Please sign in before checkout.'
+      setMessage(validationMessage)
+      toast.warning(validationMessage)
+      return
+    }
+    if (!cartProducts.length) {
+      const validationMessage = 'Your cart is empty.'
+      setMessage(validationMessage)
+      toast.warning(validationMessage)
+      return
+    }
+
+    const validationMessage = getFirstValidationMessage(validateAddressForm(shippingAddress))
+    if (validationMessage) {
+      setMessage(validationMessage)
+      toast.warning(validationMessage)
+      return
+    }
+
     setIsSubmitting(true)
     setMessage('')
     try {
       const order = await orderApi.create({
-        shippingAddress,
+        shippingAddress: Object.fromEntries(
+          Object.entries(shippingAddress).map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value])
+        ),
         paymentProvider: 'cod',
       })
       await refreshCart()
+      toast.success(`Order ${order?.orderNumber || ''} placed successfully.`.trim())
       navigate('/orders', { state: { orderNumber: order?.orderNumber } })
     } catch (error) {
-      setMessage(error.message)
+      const errorMessage = toUserMessage(error, 'Could not place your order. Please try again.')
+      setMessage(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -68,8 +143,21 @@ function Checkout() {
             </div>
           ) : (
             <div className="commerce-grid">
-              <form className="commerce-form" onSubmit={submitOrder}>
+              <form className="commerce-form" onSubmit={submitOrder} noValidate>
                 {message && <div className="commerce-alert">{message}</div>}
+                {savedAddresses.length > 0 && (
+                  <label className="commerce-field">
+                    <span>Saved Address</span>
+                    <select onChange={useSavedAddress} defaultValue="">
+                      <option value="">Choose saved address</option>
+                      {savedAddresses.map(address => (
+                        <option value={address.id} key={address.id}>
+                          {address.label || 'Address'} - {address.city}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 {Object.entries(shippingAddress).map(([key, value]) => (
                   <label className="commerce-field" key={key}>
                     <span>{key.replace(/([A-Z])/g, ' $1')}</span>

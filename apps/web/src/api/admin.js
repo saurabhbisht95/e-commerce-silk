@@ -93,4 +93,25 @@ export const adminApi = {
       method: 'DELETE',
     })
   },
+
+  async listOrders(params = {}) {
+    const searchParams = new URLSearchParams()
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') searchParams.set(key, value)
+    })
+    const query = searchParams.toString()
+    const payload = await apiRequest(`/orders${query ? `?${query}` : ''}`)
+    return {
+      orders: payload.data?.orders || [],
+      meta: payload.meta || {},
+    }
+  },
+
+  async updateOrderStatus(id, body) {
+    const payload = await apiRequest(`/orders/${id}/status`, {
+      method: 'PATCH',
+      body,
+    })
+    return payload.data?.order || null
+  },
 }

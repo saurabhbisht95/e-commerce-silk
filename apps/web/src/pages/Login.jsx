@@ -4,10 +4,14 @@ import Header from '../components/layout/Header.jsx'
 import Footer from '../components/layout/Footer.jsx'
 import { useAuth } from '../context/authContext'
 import { useCommerce } from '../context/commerceContext'
+import { useToast } from '../context/toastContext'
+import { getFirstValidationMessage, validateLoginForm } from '../utils/validation'
+import { toUserMessage } from '../utils/apiMessages'
 import './CommercePages.css'
 
 function Login() {
   const navigate = useNavigate()
+  const toast = useToast()
   const { login } = useAuth()
   const { refreshCart, refreshWishlist } = useCommerce()
   const [form, setForm] = useState({ email: '', password: '' })
@@ -18,14 +22,24 @@ function Login() {
 
   const handleSubmit = async event => {
     event.preventDefault()
+    const validationMessage = getFirstValidationMessage(validateLoginForm(form))
+    if (validationMessage) {
+      setMessage(validationMessage)
+      toast.warning(validationMessage)
+      return
+    }
+
     setIsSubmitting(true)
     setMessage('')
     try {
-      await login(form)
+      await login({
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+      })
       await Promise.all([refreshCart(), refreshWishlist()])
       navigate('/account')
     } catch (error) {
-      setMessage(error.message)
+      setMessage(toUserMessage(error, 'Sign in failed. Please try again.'))
     } finally {
       setIsSubmitting(false)
     }
@@ -39,7 +53,7 @@ function Login() {
           <h1 className="commerce-title">Sign In</h1>
           <p className="commerce-copy">Access orders, wishlist items, saved cart, and checkout.</p>
 
-          <form className="commerce-form" onSubmit={handleSubmit}>
+          <form className="commerce-form" onSubmit={handleSubmit} noValidate>
             {message && <div className="commerce-alert">{message}</div>}
             <label className="commerce-field">
               <span>Email</span>

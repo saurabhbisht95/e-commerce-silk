@@ -1,14 +1,29 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import Header from '../components/layout/Header.jsx'
 import Footer from '../components/layout/Footer.jsx'
 import { orderApi } from '../api/orders'
+import { useCommerce } from '../context/commerceContext'
+import { useToast } from '../context/toastContext'
+import { toUserMessage } from '../utils/apiMessages'
 import './CommercePages.css'
 
 function Orders() {
   const location = useLocation()
+  const toast = useToast()
+  const { refreshCart } = useCommerce()
   const [orders, setOrders] = useState([])
   const [message, setMessage] = useState(location.state?.orderNumber ? `Order ${location.state.orderNumber} placed successfully.` : '')
+  const [isWorking, setIsWorking] = useState(false)
+
+  const loadOrders = useCallback(async () => {
+    const nextOrders = await orderApi.myOrders()
+    setOrders(nextOrders)
+  }, [])
+
+  useEffect(() => {
+    if (location.state?.orderNumber) toast.success(`Order ${location.state.orderNumber} placed successfully.`)
+  }, [location.state?.orderNumber, toast])
 
   useEffect(() => {
     let isMounted = true
@@ -17,12 +32,72 @@ function Orders() {
         if (isMounted) setOrders(nextOrders)
       })
       .catch(error => {
-        if (isMounted) setMessage(error.message)
+        if (isMounted) {
+          const errorMessage = toUserMessage(error, 'Could not load orders.')
+          setMessage(errorMessage)
+          toast.error(errorMessage)
+        }
       })
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [toast])
+
+  const cancelOrder = async order => {
+    const reason = window.prompt('Reason for cancellation')
+    if (!reason) return
+    if (reason.trim().length < 3) {
+      toast.warning('Cancellation reason must be at least 3 characters.')
+      return
+    }
+
+    setIsWorking(true)
+    try {
+      await orderApi.cancel(order.id, reason.trim())
+      await loadOrders()
+      toast.success(`Order ${order.orderNumber} cancelled.`)
+    } catch (error) {
+      toast.error(toUserMessage(error, 'Could not cancel this order.'))
+    } finally {
+      setIsWorking(false)
+    }
+  }
+
+  const requestReturn = async order => {
+    const reason = window.prompt('Reason for return request')
+    if (!reason) return
+    if (reason.trim().length < 3) {
+      toast.warning('Return reason must be at least 3 characters.')
+      return
+    }
+
+    setIsWorking(true)
+    try {
+      await orderApi.requestReturn(order.id, reason.trim())
+      await loadOrders()
+      toast.success(`Return request submitted for ${order.orderNumber}.`)
+    } catch (error) {
+      toast.error(toUserMessage(error, 'Could not submit return request.'))
+    } finally {
+      setIsWorking(false)
+    }
+  }
+
+  const reorder = async order => {
+    setIsWorking(true)
+    try {
+      await orderApi.reorder(order.id)
+      await refreshCart()
+      toast.success(`Items from ${order.orderNumber} were added to cart.`)
+    } catch (error) {
+      toast.error(toUserMessage(error, 'Could not reorder these items.'))
+    } finally {
+      setIsWorking(false)
+    }
+  }
+
+  const canCancel = status => !['delivered', 'cancelled', 'refunded'].includes(status)
+  const canReturn = status => status === 'delivered'
 
   return (
     <>
@@ -47,6 +122,7 @@ function Orders() {
                     <th>Status</th>
                     <th>Total</th>
                     <th>Date</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -56,6 +132,23 @@ function Orders() {
                       <td>{order.status}</td>
                       <td>₹{Number(order.pricing?.total || 0).toLocaleString('en-IN')}</td>
                       <td>{new Date(order.createdAt).toLocaleDateString()}</td>
+                      <td>
+                        <div className="commerce-actions">
+                          <button className="commerce-btn commerce-btn--ghost" type="button" onClick={() => reorder(order)} disabled={isWorking}>
+                            Reorder
+                          </button>
+                          {canCancel(order.status) && (
+                            <button className="commerce-btn commerce-btn--ghost" type="button" onClick={() => cancelOrder(order)} disabled={isWorking}>
+                              Cancel
+                            </button>
+                          )}
+                          {canReturn(order.status) && (
+                            <button className="commerce-btn commerce-btn--ghost" type="button" onClick={() => requestReturn(order)} disabled={isWorking}>
+                              Return
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

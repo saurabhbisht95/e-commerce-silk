@@ -3,7 +3,12 @@ import Header from '../../components/layout/Header.jsx'
 import Footer from '../../components/layout/Footer.jsx'
 import { adminApi } from '../../api/admin'
 import { useAuth } from '../../context/authContext'
+import { useToast } from '../../context/toastContext'
+import { toUserMessage } from '../../utils/apiMessages'
+import { getFirstValidationMessage, validateBannerForm, validateProductForm } from '../../utils/validation'
 import '../CommercePages.css'
+
+const ORDER_STATUSES = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']
 
 const emptyForm = {
   id: '',
@@ -92,11 +97,13 @@ const buildBannerPayload = (form, uploads = {}) => {
 }
 
 function AdminPanel() {
+  const toast = useToast()
   const { user, isAdmin } = useAuth()
   const [stats, setStats] = useState(null)
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
   const [banners, setBanners] = useState([])
+  const [orders, setOrders] = useState([])
   const [form, setForm] = useState(emptyForm)
   const [bannerForm, setBannerForm] = useState(emptyBannerForm)
   const [files, setFiles] = useState([])
@@ -117,23 +124,29 @@ function AdminPanel() {
   )
 
   const loadAdminData = async () => {
-    const [dashboard, productResult, categoryResult, bannerResult] = await Promise.all([
+    const [dashboard, productResult, categoryResult, bannerResult, orderResult] = await Promise.all([
       adminApi.dashboard().catch(() => null),
       adminApi.listProducts({ limit: 100 }),
       adminApi.listCategories(),
       adminApi.listBanners(),
+      adminApi.listOrders({ limit: 25 }),
     ])
     setStats(dashboard)
     setProducts(productResult.products)
     setCategories(categoryResult)
     setBanners(bannerResult)
+    setOrders(orderResult.orders)
   }
 
   useEffect(() => {
     if (isAdmin) {
-      Promise.resolve().then(() => loadAdminData()).catch(error => setMessage(error.message))
+      Promise.resolve().then(() => loadAdminData()).catch(error => {
+        const errorMessage = toUserMessage(error, 'Could not load admin data.')
+        setMessage(errorMessage)
+        toast.error(errorMessage)
+      })
     }
-  }, [isAdmin])
+  }, [isAdmin, toast])
 
   const updateField = event => {
     const { name, value, type, checked } = event.target
@@ -197,6 +210,13 @@ function AdminPanel() {
 
   const saveProduct = async event => {
     event.preventDefault()
+    const validationMessage = getFirstValidationMessage(validateProductForm(form))
+    if (validationMessage) {
+      setMessage(validationMessage)
+      toast.warning(validationMessage)
+      return
+    }
+
     setIsSubmitting(true)
     setMessage('')
     try {
@@ -207,8 +227,11 @@ function AdminPanel() {
       await loadAdminData()
       resetForm()
       setMessage('Product saved successfully.')
+      toast.success('Product saved successfully.')
     } catch (error) {
-      setMessage(error.message)
+      const errorMessage = toUserMessage(error, 'Could not save product.')
+      setMessage(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -216,6 +239,13 @@ function AdminPanel() {
 
   const saveBanner = async event => {
     event.preventDefault()
+    const validationMessage = getFirstValidationMessage(validateBannerForm(bannerForm, bannerModelFile))
+    if (validationMessage) {
+      setMessage(validationMessage)
+      toast.warning(validationMessage)
+      return
+    }
+
     setIsSubmitting(true)
     setMessage('')
     try {
@@ -232,8 +262,11 @@ function AdminPanel() {
       await loadAdminData()
       resetBannerForm()
       setMessage('Banner saved successfully.')
+      toast.success('Banner saved successfully.')
     } catch (error) {
-      setMessage(error.message)
+      const errorMessage = toUserMessage(error, 'Could not save banner.')
+      setMessage(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -248,32 +281,60 @@ function AdminPanel() {
       setCategories(current => [...current, category])
       setForm(current => ({ ...current, category: category.id }))
       setNewCategory('')
+      toast.success('Category created successfully.')
     } catch (error) {
-      setMessage(error.message)
+      const errorMessage = toUserMessage(error, 'Could not create category.')
+      setMessage(errorMessage)
+      toast.error(errorMessage)
     }
   }
 
   const deleteProduct = async product => {
+    if (!window.confirm(`Delete ${product.name}?`)) return
     setMessage('')
     try {
       await adminApi.deleteProduct(product.mongoId)
       await loadAdminData()
       if (form.id === product.mongoId) resetForm()
       setMessage('Product removed successfully.')
+      toast.success('Product removed successfully.')
     } catch (error) {
-      setMessage(error.message)
+      const errorMessage = toUserMessage(error, 'Could not remove product.')
+      setMessage(errorMessage)
+      toast.error(errorMessage)
     }
   }
 
   const deleteBanner = async banner => {
+    if (!window.confirm('Delete this banner?')) return
     setMessage('')
     try {
       await adminApi.deleteBanner(banner.id)
       await loadAdminData()
       if (bannerForm.id === banner.id) resetBannerForm()
       setMessage('Banner removed successfully. Static hero slides will be used if no active banners remain.')
+      toast.success('Banner removed successfully.')
     } catch (error) {
-      setMessage(error.message)
+      const errorMessage = toUserMessage(error, 'Could not remove banner.')
+      setMessage(errorMessage)
+      toast.error(errorMessage)
+    }
+  }
+
+  const updateOrderStatus = async (order, status) => {
+    if (!status || status === order.status) return
+    setMessage('')
+    try {
+      await adminApi.updateOrderStatus(order.id, {
+        status,
+        note: 'Updated from admin panel',
+      })
+      await loadAdminData()
+      toast.success(`Order ${order.orderNumber} moved to ${status}.`)
+    } catch (error) {
+      const errorMessage = toUserMessage(error, 'Could not update order status.')
+      setMessage(errorMessage)
+      toast.error(errorMessage)
     }
   }
 
@@ -315,13 +376,17 @@ function AdminPanel() {
               <h2>Products</h2>
               <p>{stats?.activeProducts || products.length}</p>
             </section>
+            <section className="commerce-panel">
+              <h2>Recent Orders</h2>
+              <p>{orders.length}</p>
+            </section>
           </div>
 
           <div className="admin-layout">
             <section className="commerce-form commerce-form--wide">
               <h2>{selectedProduct ? 'Edit Product' : 'Create Product'}</h2>
 
-              <form className="commerce-form commerce-form--wide" onSubmit={saveProduct}>
+              <form className="commerce-form commerce-form--wide" onSubmit={saveProduct} noValidate>
                 <label className="commerce-field">
                   <span>Name</span>
                   <input name="name" value={form.name} onChange={updateField} required />
@@ -431,7 +496,7 @@ function AdminPanel() {
             <section className="commerce-form commerce-form--wide">
               <h2>{selectedBanner ? 'Edit Banner' : 'Create Banner'}</h2>
 
-              <form className="commerce-form commerce-form--wide" onSubmit={saveBanner}>
+              <form className="commerce-form commerce-form--wide" onSubmit={saveBanner} noValidate>
                 <label className="commerce-field">
                   <span>Headline Line 1</span>
                   <input name="headlineOne" value={bannerForm.headlineOne} onChange={updateBannerField} required />
@@ -523,6 +588,43 @@ function AdminPanel() {
               </table>
             </section>
           </div>
+
+          <section className="commerce-table-wrap" style={{ marginTop: 28 }}>
+            <h2>Orders</h2>
+            <table className="commerce-table">
+              <thead>
+                <tr>
+                  <th>Order</th>
+                  <th>Customer</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map(order => (
+                  <tr key={order.id}>
+                    <td>{order.orderNumber}</td>
+                    <td>{order.customer?.name}<br /><small>{order.customer?.email}</small></td>
+                    <td>₹{Number(order.pricing?.total || 0).toLocaleString('en-IN')}</td>
+                    <td>
+                      <select value={order.status} onChange={event => updateOrderStatus(order, event.target.value)}>
+                        {ORDER_STATUSES.map(status => (
+                          <option value={status} key={status}>{status}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>{new Date(order.createdAt).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+                {!orders.length && (
+                  <tr>
+                    <td colSpan="5">No orders yet.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </section>
         </div>
       </main>
       <Footer />

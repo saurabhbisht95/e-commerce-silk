@@ -14,6 +14,7 @@ import AdminPanel from './pages/admin/AdminPanel.jsx'
 import { CommerceProvider } from './context/CommerceContext.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { useAuth } from './context/authContext'
+import ToastProvider from './components/ui/ToastProvider.jsx'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -60,14 +61,16 @@ function AnimatedRoutes() {
 
 function App() {
   return (
-    <AuthProvider>
-      <CommerceProvider>
-        <Router>
-          <ScrollToTop />
-          <AnimatedRoutes />
-        </Router>
-      </CommerceProvider>
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <CommerceProvider>
+          <Router>
+            <ScrollToTop />
+            <AnimatedRoutes />
+          </Router>
+        </CommerceProvider>
+      </AuthProvider>
+    </ToastProvider>
   )
 }
 

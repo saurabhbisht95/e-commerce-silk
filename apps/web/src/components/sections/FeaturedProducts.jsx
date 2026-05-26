@@ -5,6 +5,7 @@ import { Navigation } from 'swiper/modules';
 import { Link } from 'react-router-dom';
 import QuickViewModal from '../product/QuickViewModal.jsx';
 import { useCommerce } from '../../context/commerceContext';
+import { useToast } from '../../context/toastContext';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import './FeaturedProducts.css';
@@ -45,6 +46,7 @@ const HeartIcon = () => (
 );
 
 function FeaturedProducts() {
+  const toast = useToast();
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const { products, featuredProducts, addToCart, addToWishlist } = useCommerce();
 
@@ -117,7 +119,17 @@ function FeaturedProducts() {
                     />
 
                     <div className="product-actions-pill">
-                      <button className="product-action-btn" type="button" aria-label="Compare"><ShuffleIcon /></button>
+                      <button
+                        className="product-action-btn"
+                        type="button"
+                        aria-label="Compare"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          toast.info('Product comparison is not available yet.');
+                        }}
+                      >
+                        <ShuffleIcon />
+                      </button>
                       <button
                         className="product-action-btn"
                         type="button"

@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PRODUCTS as STATIC_PRODUCTS } from '../data/products'
 import { cartApi } from '../api/cart'
 import { getBackendProductId, normalizeProduct, normalizeProducts, productApi } from '../api/products'
 import { wishlistApi } from '../api/wishlist'
 import { CommerceContext } from './commerceContext'
+import { useToast } from './toastContext'
+import { toUserMessage } from '../utils/apiMessages'
 
 const fallbackProducts = normalizeProducts(STATIC_PRODUCTS)
 
@@ -25,6 +27,8 @@ const cartItemToProduct = item => {
 }
 
 export function CommerceProvider({ children }) {
+  const toast = useToast()
+  const hasShownCatalogError = useRef(false)
   const [products, setProducts] = useState(fallbackProducts)
   const [featuredProducts, setFeaturedProducts] = useState(fallbackProducts.slice(0, 10))
   const [cart, setCart] = useState(null)
@@ -39,9 +43,10 @@ export function CommerceProvider({ children }) {
       return nextCart
     } catch (error) {
       setApiError(error.message)
+      toast.error(toUserMessage(error, 'Unable to load cart.'))
       return null
     }
-  }, [])
+  }, [toast])
 
   const refreshWishlist = useCallback(async () => {
     try {
@@ -76,6 +81,10 @@ export function CommerceProvider({ children }) {
         setProducts(fallbackProducts)
         setFeaturedProducts(fallbackProducts.slice(0, 10))
         setApiError(error.message)
+        if (!hasShownCatalogError.current) {
+          toast.warning('Backend is not reachable right now. Showing the saved catalog until the API reconnects.')
+          hasShownCatalogError.current = true
+        }
       } finally {
         if (isMounted) setIsCatalogLoading(false)
       }
@@ -86,56 +95,97 @@ export function CommerceProvider({ children }) {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [toast])
 
   const addToCart = useCallback(async product => {
     const productId = getBackendProductId(product)
-    if (!productId) return null
+    if (!productId) {
+      toast.error('This product is not available for checkout yet.')
+      return null
+    }
 
-    const nextCart = await cartApi.addItem({ productId, quantity: 1 })
-    setCart(nextCart)
-    return nextCart
-  }, [])
+    try {
+      const nextCart = await cartApi.addItem({ productId, quantity: 1 })
+      setCart(nextCart)
+      toast.success(`${product.name || 'Product'} added to cart.`)
+      return nextCart
+    } catch (error) {
+      toast.error(toUserMessage(error, 'Could not add this product to cart.'))
+      return null
+    }
+  }, [toast])
 
   const updateCartItem = useCallback(async ({ productId, variantSku, quantity }) => {
-    const nextCart = await cartApi.updateItem({ productId, variantSku, quantity })
-    setCart(nextCart)
-    return nextCart
-  }, [])
+    if (!productId || Number(quantity) < 1) {
+      toast.error('Quantity must be at least 1.')
+      return null
+    }
+
+    try {
+      const nextCart = await cartApi.updateItem({ productId, variantSku, quantity })
+      setCart(nextCart)
+      toast.success('Cart updated.')
+      return nextCart
+    } catch (error) {
+      toast.error(toUserMessage(error, 'Could not update the cart.'))
+      return null
+    }
+  }, [toast])
 
   const removeCartItem = useCallback(async ({ productId, variantSku }) => {
-    const nextCart = await cartApi.removeItem({ productId, variantSku })
-    setCart(nextCart)
-    return nextCart
-  }, [])
+    if (!productId) {
+      toast.error('This cart item is missing a valid product id.')
+      return null
+    }
+
+    try {
+      const nextCart = await cartApi.removeItem({ productId, variantSku })
+      setCart(nextCart)
+      toast.success('Item removed from cart.')
+      return nextCart
+    } catch (error) {
+      toast.error(toUserMessage(error, 'Could not remove this item from cart.'))
+      return null
+    }
+  }, [toast])
 
   const addToWishlist = useCallback(async product => {
     const productId = getBackendProductId(product)
-    if (!productId) return null
+    if (!productId) {
+      toast.error('This product cannot be saved yet.')
+      return null
+    }
 
     try {
       const nextWishlist = await wishlistApi.add(productId)
       setWishlist(nextWishlist)
+      toast.success(`${product.name || 'Product'} saved to wishlist.`)
       return nextWishlist
     } catch (error) {
       setApiError(error.message)
+      toast.error(toUserMessage(error, 'Could not save this product to wishlist.'))
       return null
     }
-  }, [])
+  }, [toast])
 
   const removeFromWishlist = useCallback(async product => {
     const productId = getBackendProductId(product)
-    if (!productId) return null
+    if (!productId) {
+      toast.error('This wishlist item is missing a valid product id.')
+      return null
+    }
 
     try {
       const nextWishlist = await wishlistApi.remove(productId)
       setWishlist(nextWishlist)
+      toast.success('Removed from wishlist.')
       return nextWishlist
     } catch (error) {
       setApiError(error.message)
+      toast.error(toUserMessage(error, 'Could not update your wishlist.'))
       return null
     }
-  }, [])
+  }, [toast])
 
   const cartProducts = useMemo(() => (cart?.items || []).map(cartItemToProduct), [cart])
   const wishlistProducts = useMemo(() => normalizeProducts(wishlist?.products || []), [wishlist])

@@ -4,6 +4,7 @@ import Header from '../components/layout/Header.jsx';
 import Footer from '../components/layout/Footer.jsx';
 import QuickViewModal from '../components/product/QuickViewModal.jsx';
 import { useCommerce } from '../context/commerceContext';
+import { useToast } from '../context/toastContext';
 import './Shop.css';
 
 // SVG Icons for the product cards
@@ -31,6 +32,7 @@ const HeartIcon = () => (
 );
 
 function Shop() {
+  const toast = useToast();
   const [activeCategory, setActiveCategory] = useState('All');
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const { products, addToCart, addToWishlist } = useCommerce();
@@ -114,7 +116,17 @@ function Shop() {
 
                     {/* Hover Actions Pill */}
                     <div className="sp-actions-pill">
-                      <button className="sp-action-btn" type="button" aria-label="Compare"><ShuffleIcon /></button>
+                      <button
+                        className="sp-action-btn"
+                        type="button"
+                        aria-label="Compare"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          toast.info('Product comparison is not available yet.');
+                        }}
+                      >
+                        <ShuffleIcon />
+                      </button>
                       <button
                         className="sp-action-btn"
                         type="button"

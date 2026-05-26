@@ -4,10 +4,14 @@ import Header from '../components/layout/Header.jsx'
 import Footer from '../components/layout/Footer.jsx'
 import { useAuth } from '../context/authContext'
 import { useCommerce } from '../context/commerceContext'
+import { useToast } from '../context/toastContext'
+import { toUserMessage } from '../utils/apiMessages'
+import { getFirstValidationMessage, validateRegisterForm } from '../utils/validation'
 import './CommercePages.css'
 
 function Register() {
   const navigate = useNavigate()
+  const toast = useToast()
   const { register } = useAuth()
   const { refreshCart, refreshWishlist } = useCommerce()
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' })
@@ -18,14 +22,26 @@ function Register() {
 
   const handleSubmit = async event => {
     event.preventDefault()
+    const validationMessage = getFirstValidationMessage(validateRegisterForm(form))
+    if (validationMessage) {
+      setMessage(validationMessage)
+      toast.warning(validationMessage)
+      return
+    }
+
     setIsSubmitting(true)
     setMessage('')
     try {
-      await register(form)
+      await register({
+        name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
+        phone: form.phone.trim(),
+        password: form.password,
+      })
       await Promise.all([refreshCart(), refreshWishlist()])
       navigate('/account')
     } catch (error) {
-      setMessage(error.message)
+      setMessage(toUserMessage(error, 'Account creation failed. Please try again.'))
     } finally {
       setIsSubmitting(false)
     }
@@ -39,7 +55,7 @@ function Register() {
           <h1 className="commerce-title">Create Account</h1>
           <p className="commerce-copy">Create a customer account for cart, wishlist, addresses, and order history.</p>
 
-          <form className="commerce-form" onSubmit={handleSubmit}>
+          <form className="commerce-form" onSubmit={handleSubmit} noValidate>
             {message && <div className="commerce-alert">{message}</div>}
             <label className="commerce-field">
               <span>Name</span>
