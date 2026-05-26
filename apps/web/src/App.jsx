@@ -10,7 +10,6 @@ import Cart from './pages/Cart.jsx'
 import Wishlist from './pages/Wishlist.jsx'
 import Checkout from './pages/Checkout.jsx'
 import Orders from './pages/Orders.jsx'
-import AdminPanel from './pages/admin/AdminPanel.jsx'
 import { CommerceProvider } from './context/CommerceContext.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { useAuth } from './context/authContext'
@@ -33,12 +32,6 @@ function RequireAuth({ children }) {
   return user ? children : <Navigate to="/login" replace />
 }
 
-function RequireAdmin({ children }) {
-  const { isAdmin, isAuthLoading } = useAuth()
-  if (isAuthLoading) return null
-  return isAdmin ? children : <Navigate to="/account" replace />
-}
-
 function AnimatedRoutes() {
   const location = useLocation();
   return (
@@ -53,7 +46,6 @@ function AnimatedRoutes() {
         <Route path="/cart" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/orders" element={<RequireAuth><Orders /></RequireAuth>} />
-        <Route path="/admin" element={<RequireAdmin><AdminPanel /></RequireAdmin>} />
       </Routes>
     </AnimatePresence>
   );

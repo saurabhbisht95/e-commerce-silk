@@ -1,6 +1,6 @@
 # Doon Silk API
 
-Production-ready Express + MongoDB backend for the existing Doon Silk frontend.
+Production-ready Express + MongoDB backend for the Doon Silk storefront and separate admin console.
 
 ## Stack
 
@@ -44,10 +44,16 @@ npm run seed
 
 ## Frontend Integration Notes
 
-The frontend is wired through `/api/v1` by default. For separate frontend/API domains, set:
+The storefront and admin console are wired through `/api/v1` by default. For separate frontend/API domains, set:
 
 ```text
 VITE_API_URL=https://your-api-domain.com/api/v1
+```
+
+Local allowed origins should include both apps:
+
+```text
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174
 ```
 
 Product list responses intentionally include frontend-friendly fields:
@@ -93,7 +99,7 @@ Content-Type: application/json
 
 ## Production
 
-Use strong secrets in `.env`, configure CORS origins, set `COOKIE_SECURE=true`, and enable CSRF when the frontend sends `X-CSRF-Token`.
+Use strong secrets in `.env`, configure storefront and admin CORS origins, set `COOKIE_SECURE=true`, and enable CSRF when the clients send `X-CSRF-Token`.
 
 PM2:
 

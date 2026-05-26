@@ -9,6 +9,8 @@ import { toUserMessage } from '../utils/apiMessages'
 import { getFirstValidationMessage, validateAddressForm } from '../utils/validation'
 import './CommercePages.css'
 
+const ADMIN_URL = import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174'
+
 const emptyAddress = {
   id: '',
   label: 'Home',
@@ -168,7 +170,7 @@ function Account() {
             {isAdmin && (
               <section className="commerce-panel">
                 <h2>Admin</h2>
-                <Link className="commerce-btn" to="/admin">Open Admin Panel</Link>
+                <a className="commerce-btn" href={ADMIN_URL}>Open Admin Panel</a>
               </section>
             )}
           </div>

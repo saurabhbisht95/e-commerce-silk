@@ -107,6 +107,7 @@ const NavDeco = () => (
 )
 
 const HEADER_LINKS = ['Fabric', 'Kurta', 'Saree', 'Shawls', 'Muffler', 'Stoles', 'Suits', 'Collections']
+const ADMIN_URL = import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174'
 
 function Header() {
   const scrollY = useScrollPosition()
@@ -316,7 +317,7 @@ function Header() {
                     <>
                       <Link to="/account" onClick={closePanel}>Account</Link>
                       <Link to="/orders" onClick={closePanel}>Orders</Link>
-                      {isAdmin && <Link to="/admin" onClick={closePanel}>Admin</Link>}
+                      {isAdmin && <a href={ADMIN_URL} onClick={closePanel}>Admin</a>}
                       <button type="button" onClick={handleLogout}>Logout</button>
                     </>
                   ) : (

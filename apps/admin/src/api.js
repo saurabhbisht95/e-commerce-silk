@@ -1,0 +1,247 @@
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
+const STOREFRONT_URL = import.meta.env.VITE_STOREFRONT_URL || 'http://localhost:5173'
+const ENABLE_CSRF = import.meta.env.VITE_ENABLE_CSRF === 'true'
+const TOKEN_KEY = 'doon_silk_admin_access_token'
+
+let csrfToken = null
+let requestSubscriber = null
+
+export const apiConfig = {
+  apiBaseUrl: API_BASE_URL,
+  storefrontUrl: STOREFRONT_URL,
+  healthUrl: API_BASE_URL.includes('/api/v1') ? API_BASE_URL.replace(/\/api\/v1$/, '/healthz') : '/healthz',
+}
+
+export class ApiError extends Error {
+  constructor(message, details = {}) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = details.status || 0
+    this.payload = details.payload || null
+  }
+}
+
+export const setRequestSubscriber = subscriber => {
+  requestSubscriber = subscriber
+}
+
+export const tokenStore = {
+  get() {
+    return window.localStorage.getItem(TOKEN_KEY)
+  },
+  set(token) {
+    if (token) window.localStorage.setItem(TOKEN_KEY, token)
+  },
+  clear() {
+    window.localStorage.removeItem(TOKEN_KEY)
+  },
+}
+
+const isFormData = body => typeof FormData !== 'undefined' && body instanceof FormData
+
+const buildUrl = endpoint => {
+  if (/^https?:\/\//.test(endpoint)) return endpoint
+  return `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`
+}
+
+const getCsrfToken = async () => {
+  if (!ENABLE_CSRF || csrfToken) return csrfToken
+  try {
+    const response = await fetch(buildUrl('/security/csrf-token'), { credentials: 'include' })
+    if (!response.ok) return null
+    const payload = await response.json()
+    csrfToken = payload.data?.csrfToken || null
+    return csrfToken
+  } catch {
+    return null
+  }
+}
+
+const recordRequest = entry => {
+  requestSubscriber?.({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    time: new Date().toLocaleTimeString(),
+    ...entry,
+  })
+}
+
+export const adminRequest = async (endpoint, options = {}) => {
+  const method = options.method || 'GET'
+  const headers = new Headers(options.headers || {})
+  const token = tokenStore.get()
+  const startedAt = performance.now()
+
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+  if (options.body && !isFormData(options.body) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase())) {
+    const tokenValue = await getCsrfToken()
+    if (tokenValue) headers.set('X-CSRF-Token', tokenValue)
+  }
+
+  let response
+  try {
+    response = await fetch(buildUrl(endpoint), {
+      ...options,
+      method,
+      credentials: 'include',
+      headers,
+      body: options.body && !isFormData(options.body) ? JSON.stringify(options.body) : options.body,
+    })
+  } catch {
+    recordRequest({ method, endpoint, status: 'NETWORK', duration: Math.round(performance.now() - startedAt), ok: false })
+    throw new ApiError('Backend is unreachable. Check API server, Atlas DNS/network, and CORS settings.')
+  }
+
+  const contentType = response.headers.get('content-type') || ''
+  const payload = contentType.includes('application/json') ? await response.json() : null
+  const duration = Math.round(performance.now() - startedAt)
+
+  recordRequest({ method, endpoint, status: response.status, duration, ok: response.ok })
+
+  if (!response.ok) {
+    throw new ApiError(payload?.message || `Request failed with status ${response.status}`, {
+      status: response.status,
+      payload,
+    })
+  }
+
+  return payload
+}
+
+export const resolveMediaUrl = url => {
+  if (!url) return ''
+  if (/^https?:\/\//.test(url) || /^data:/.test(url) || /^blob:/.test(url)) return url
+  if (url.startsWith('/uploads')) return url
+  if (url.startsWith('/src/assets')) return `${STOREFRONT_URL}${url}`
+  return url
+}
+
+export const adminApi = {
+  async health() {
+    const response = await fetch(apiConfig.healthUrl, { credentials: 'include' })
+    return response.json()
+  },
+  async login(credentials) {
+    const payload = await adminRequest('/auth/login', {
+      method: 'POST',
+      body: credentials,
+    })
+    tokenStore.set(payload.data?.accessToken)
+    return payload.data
+  },
+  async me() {
+    const payload = await adminRequest('/auth/me')
+    return payload.data?.user || null
+  },
+  async logout() {
+    await adminRequest('/auth/logout', { method: 'POST' }).catch(() => null)
+    tokenStore.clear()
+  },
+  async dashboard() {
+    const payload = await adminRequest('/admin/dashboard')
+    return payload.data?.stats || null
+  },
+  async salesAnalytics(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    const payload = await adminRequest(`/admin/analytics/sales${query ? `?${query}` : ''}`)
+    return payload.data?.analytics || []
+  },
+  async lowStock() {
+    const payload = await adminRequest('/admin/inventory/low-stock')
+    return payload.data?.products || []
+  },
+  async listProducts(params = {}) {
+    const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== '' && value != null)).toString()
+    const payload = await adminRequest(`/products${query ? `?${query}` : ''}`)
+    return { products: payload.data?.products || [], meta: payload.meta || {} }
+  },
+  async createProduct(body) {
+    const payload = await adminRequest('/products', { method: 'POST', body })
+    return payload.data?.product
+  },
+  async updateProduct(id, body) {
+    const payload = await adminRequest(`/products/${id}`, { method: 'PUT', body })
+    return payload.data?.product
+  },
+  async deleteProduct(id) {
+    await adminRequest(`/products/${id}`, { method: 'DELETE' })
+  },
+  async adjustStock(id, body) {
+    const payload = await adminRequest(`/products/${id}/stock`, { method: 'PATCH', body })
+    return payload.data?.product
+  },
+  async listCategories() {
+    const payload = await adminRequest('/categories')
+    return (payload.data?.categories || []).map(category => ({ ...category, id: category.id || category._id }))
+  },
+  async createCategory(body) {
+    const payload = await adminRequest('/categories', { method: 'POST', body })
+    return payload.data?.category
+  },
+  async updateCategory(id, body) {
+    const payload = await adminRequest(`/categories/${id}`, { method: 'PUT', body })
+    return payload.data?.category
+  },
+  async deleteCategory(id) {
+    await adminRequest(`/categories/${id}`, { method: 'DELETE' })
+  },
+  async uploadImages(files) {
+    const formData = new FormData()
+    Array.from(files).forEach(file => formData.append('images', file))
+    const payload = await adminRequest('/uploads/images', { method: 'POST', body: formData })
+    return payload.data?.images || []
+  },
+  async listOrders(params = {}) {
+    const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== '' && value != null)).toString()
+    const payload = await adminRequest(`/orders${query ? `?${query}` : ''}`)
+    return { orders: payload.data?.orders || [], meta: payload.meta || {} }
+  },
+  async updateOrderStatus(id, body) {
+    const payload = await adminRequest(`/orders/${id}/status`, { method: 'PATCH', body })
+    return payload.data?.order
+  },
+  async listUsers(params = {}) {
+    const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== '' && value != null)).toString()
+    const payload = await adminRequest(`/admin/users${query ? `?${query}` : ''}`)
+    return { users: payload.data?.users || [], meta: payload.meta || {} }
+  },
+  async updateUser(id, body) {
+    const payload = await adminRequest(`/admin/users/${id}`, { method: 'PATCH', body })
+    return payload.data?.user
+  },
+  async listBanners(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    const payload = await adminRequest(`/banners${query ? `?${query}` : ''}`)
+    return payload.data?.banners || []
+  },
+  async createBanner(body) {
+    const payload = await adminRequest('/banners', { method: 'POST', body })
+    return payload.data?.banner
+  },
+  async updateBanner(id, body) {
+    const payload = await adminRequest(`/banners/${id}`, { method: 'PUT', body })
+    return payload.data?.banner
+  },
+  async deleteBanner(id) {
+    await adminRequest(`/banners/${id}`, { method: 'DELETE' })
+  },
+  async listCoupons(params = {}) {
+    const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== '' && value != null)).toString()
+    const payload = await adminRequest(`/coupons${query ? `?${query}` : ''}`)
+    return { coupons: payload.data?.coupons || [], meta: payload.meta || {} }
+  },
+  async createCoupon(body) {
+    const payload = await adminRequest('/coupons', { method: 'POST', body })
+    return payload.data?.coupon
+  },
+  async updateCoupon(id, body) {
+    const payload = await adminRequest(`/coupons/${id}`, { method: 'PUT', body })
+    return payload.data?.coupon
+  },
+  async deleteCoupon(id) {
+    await adminRequest(`/coupons/${id}`, { method: 'DELETE' })
+  },
+}
