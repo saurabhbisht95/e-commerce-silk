@@ -4,12 +4,14 @@ const ENABLE_CSRF = import.meta.env.VITE_ENABLE_CSRF === 'true'
 const TOKEN_KEY = 'doon_silk_admin_access_token'
 
 let csrfToken = null
+let refreshPromise = null
 let requestSubscriber = null
 
 export const apiConfig = {
   apiBaseUrl: API_BASE_URL,
   storefrontUrl: STOREFRONT_URL,
   healthUrl: API_BASE_URL.includes('/api/v1') ? API_BASE_URL.replace(/\/api\/v1$/, '/healthz') : '/healthz',
+  apiDocsUrl: API_BASE_URL.includes('/api/v1') ? API_BASE_URL.replace(/\/api\/v1$/, '/api-docs') : '/api-docs',
 }
 
 export class ApiError extends Error {
@@ -44,6 +46,39 @@ const buildUrl = endpoint => {
   return `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`
 }
 
+const apiOrigin = (() => {
+  try {
+    return /^https?:\/\//.test(API_BASE_URL) ? new URL(API_BASE_URL).origin : ''
+  } catch {
+    return ''
+  }
+})()
+
+const getEndpointPath = endpoint => {
+  if (/^https?:\/\//.test(endpoint)) {
+    try {
+      return new URL(endpoint).pathname.replace(/\/api\/v1/, '')
+    } catch {
+      return endpoint
+    }
+  }
+
+  return endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+}
+
+const canRefreshForEndpoint = endpoint => {
+  const path = getEndpointPath(endpoint)
+  return ![
+    '/auth/login',
+    '/auth/register',
+    '/auth/logout',
+    '/auth/refresh-token',
+    '/auth/forgot-password',
+    '/auth/reset-password',
+    '/auth/verify-email',
+  ].some(authPath => path.startsWith(authPath))
+}
+
 const getCsrfToken = async () => {
   if (!ENABLE_CSRF || csrfToken) return csrfToken
   try {
@@ -65,7 +100,34 @@ const recordRequest = entry => {
   })
 }
 
-export const adminRequest = async (endpoint, options = {}) => {
+const refreshAdminSession = async () => {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      const headers = new Headers({ 'Content-Type': 'application/json' })
+      const tokenValue = await getCsrfToken()
+      if (tokenValue) headers.set('X-CSRF-Token', tokenValue)
+
+      const response = await fetch(buildUrl('/auth/refresh-token'), {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: JSON.stringify({}),
+      })
+      const contentType = response.headers.get('content-type') || ''
+      const payload = contentType.includes('application/json') ? await response.json() : null
+
+      if (!response.ok) throw new ApiError(payload?.message || 'Admin session expired', { status: response.status, payload })
+      tokenStore.set(payload?.data?.accessToken)
+      return payload
+    })().finally(() => {
+      refreshPromise = null
+    })
+  }
+
+  return refreshPromise
+}
+
+export const adminRequest = async (endpoint, options = {}, retryState = { hasRetried: false }) => {
   const method = options.method || 'GET'
   const headers = new Headers(options.headers || {})
   const token = tokenStore.get()
@@ -102,6 +164,15 @@ export const adminRequest = async (endpoint, options = {}) => {
   recordRequest({ method, endpoint, status: response.status, duration, ok: response.ok })
 
   if (!response.ok) {
+    if (response.status === 401 && !retryState.hasRetried && canRefreshForEndpoint(endpoint)) {
+      try {
+        await refreshAdminSession()
+        return adminRequest(endpoint, options, { hasRetried: true })
+      } catch {
+        tokenStore.clear()
+      }
+    }
+
     throw new ApiError(payload?.message || `Request failed with status ${response.status}`, {
       status: response.status,
       payload,
@@ -114,7 +185,7 @@ export const adminRequest = async (endpoint, options = {}) => {
 export const resolveMediaUrl = url => {
   if (!url) return ''
   if (/^https?:\/\//.test(url) || /^data:/.test(url) || /^blob:/.test(url)) return url
-  if (url.startsWith('/uploads')) return url
+  if (url.startsWith('/uploads')) return apiOrigin ? `${apiOrigin}${url}` : url
   if (url.startsWith('/src/assets')) return `${STOREFRONT_URL}${url}`
   return url
 }

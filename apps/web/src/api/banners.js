@@ -1,11 +1,11 @@
-import { apiRequest } from './http'
+import { apiRequest, resolveApiAssetUrl } from './http'
 
 const normalizeBanner = banner => ({
   ...banner,
   id: banner.id || banner._id,
   headline: Array.isArray(banner.headline) && banner.headline.length ? banner.headline : ['Doon Silk'],
-  modelImage: banner.modelImage || banner.modelImageData?.url || '',
-  sideImage: banner.sideImage || banner.sideImageData?.url || banner.modelImage || banner.modelImageData?.url || '',
+  modelImage: resolveApiAssetUrl(banner.modelImage || banner.modelImageData?.url || ''),
+  sideImage: resolveApiAssetUrl(banner.sideImage || banner.sideImageData?.url || banner.modelImage || banner.modelImageData?.url || ''),
 })
 
 export const bannerApi = {

@@ -2,6 +2,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
 const ENABLE_CSRF = import.meta.env.VITE_ENABLE_CSRF === 'true'
 
 let csrfToken = null
+let refreshPromise = null
 
 export class ApiRequestError extends Error {
   constructor(message, details = {}) {
@@ -18,6 +19,46 @@ const isFormData = body => typeof FormData !== 'undefined' && body instanceof Fo
 const buildUrl = endpoint => {
   if (/^https?:\/\//.test(endpoint)) return endpoint
   return `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`
+}
+
+const apiOrigin = (() => {
+  try {
+    return /^https?:\/\//.test(API_BASE_URL) ? new URL(API_BASE_URL).origin : ''
+  } catch {
+    return ''
+  }
+})()
+
+export const resolveApiAssetUrl = url => {
+  if (!url) return ''
+  if (/^https?:\/\//.test(url) || /^data:/.test(url) || /^blob:/.test(url)) return url
+  if (url.startsWith('/uploads')) return apiOrigin ? `${apiOrigin}${url}` : url
+  return url
+}
+
+const getEndpointPath = endpoint => {
+  if (/^https?:\/\//.test(endpoint)) {
+    try {
+      return new URL(endpoint).pathname.replace(/\/api\/v1/, '')
+    } catch {
+      return endpoint
+    }
+  }
+
+  return endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+}
+
+const canRefreshForEndpoint = endpoint => {
+  const path = getEndpointPath(endpoint)
+  return ![
+    '/auth/login',
+    '/auth/register',
+    '/auth/logout',
+    '/auth/refresh-token',
+    '/auth/forgot-password',
+    '/auth/reset-password',
+    '/auth/verify-email',
+  ].some(authPath => path.startsWith(authPath))
 }
 
 const getCsrfToken = async () => {
@@ -40,7 +81,31 @@ const getCsrfToken = async () => {
   return csrfToken
 }
 
-export const apiRequest = async (endpoint, options = {}) => {
+const refreshSession = async () => {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      const headers = new Headers({ 'Content-Type': 'application/json' })
+      const token = await getCsrfToken()
+      if (token) headers.set('X-CSRF-Token', token)
+
+      const response = await fetch(buildUrl('/auth/refresh-token'), {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: JSON.stringify({}),
+      })
+
+      if (!response.ok) throw new Error('Refresh token expired')
+      return response.json()
+    })().finally(() => {
+      refreshPromise = null
+    })
+  }
+
+  return refreshPromise
+}
+
+export const apiRequest = async (endpoint, options = {}, retryState = { hasRetried: false }) => {
   const method = options.method || 'GET'
   const headers = new Headers(options.headers || {})
 
@@ -71,6 +136,15 @@ export const apiRequest = async (endpoint, options = {}) => {
   const payload = contentType.includes('application/json') ? await response.json() : null
 
   if (!response.ok) {
+    if (response.status === 401 && !retryState.hasRetried && canRefreshForEndpoint(endpoint)) {
+      try {
+        await refreshSession()
+        return apiRequest(endpoint, options, { hasRetried: true })
+      } catch {
+        // Keep the original endpoint error so UI messages stay tied to the user's action.
+      }
+    }
+
     const message = payload?.message || `Request failed with status ${response.status}`
     throw new ApiRequestError(message, { status: response.status, payload })
   }

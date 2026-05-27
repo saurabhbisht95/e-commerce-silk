@@ -1,9 +1,10 @@
 import { PRODUCTS as STATIC_PRODUCTS } from '../data/products'
-import { apiRequest } from './http'
+import { apiRequest, resolveApiAssetUrl } from './http'
 
 const fallbackById = new Map(STATIC_PRODUCTS.map(product => [String(product.id), product]))
 
 const isExternalAsset = url => /^https?:\/\//.test(url || '') || /^data:/.test(url || '') || /^blob:/.test(url || '')
+const isApiUploadAsset = url => String(url || '').startsWith('/uploads')
 
 export const getBackendProductId = product => {
   const id = product?.mongoId || product?._id || product?.backendId
@@ -13,8 +14,12 @@ export const getBackendProductId = product => {
 
 export const normalizeProduct = product => {
   const fallback = fallbackById.get(String(product.id || product.legacyId || ''))
-  const image = isExternalAsset(product.image) ? product.image : fallback?.image || product.image
-  const imageLarge = isExternalAsset(product.imageLarge) ? product.imageLarge : fallback?.imageLarge || fallback?.image || product.imageLarge || image
+  const image = isExternalAsset(product.image) || isApiUploadAsset(product.image)
+    ? resolveApiAssetUrl(product.image)
+    : fallback?.image || product.image
+  const imageLarge = isExternalAsset(product.imageLarge) || isApiUploadAsset(product.imageLarge)
+    ? resolveApiAssetUrl(product.imageLarge)
+    : fallback?.imageLarge || fallback?.image || product.imageLarge || image
 
   return {
     ...product,

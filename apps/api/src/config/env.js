@@ -16,7 +16,9 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(5000),
   API_BASE_URL: z.string().url().default('http://localhost:5000'),
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
-  CORS_ORIGINS: z.string().default('http://localhost:5173,http://127.0.0.1:5173'),
+  CORS_ORIGINS: z
+    .string()
+    .default('http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174'),
 
   MONGODB_URI: z.string().min(1).default('mongodb://localhost:27017/doon_silk'),
   MONGODB_DB_NAME: z.string().min(1).default('doon_silk'),

@@ -627,7 +627,7 @@ function App() {
           </div>
           <div className="topbar-actions">
             <a href={apiConfig.storefrontUrl} target="_blank" rel="noreferrer">Open Storefront</a>
-            <a href="/api-docs" target="_blank" rel="noreferrer">Swagger</a>
+            <a href={apiConfig.apiDocsUrl} target="_blank" rel="noreferrer">Swagger</a>
             <button type="button" onClick={loadAdminData} disabled={loading}>{loading ? 'Loading...' : 'Refresh'}</button>
           </div>
         </header>
