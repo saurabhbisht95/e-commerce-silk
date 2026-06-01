@@ -58,4 +58,21 @@ export const cartApi = {
     })
     return payload.data?.cart || null
   },
+
+  async applyCoupon(code) {
+    const payload = await apiRequest('/cart/coupon', {
+      method: 'POST',
+      headers: guestHeaders(),
+      body: { code },
+    })
+    return payload.data?.cart || null
+  },
+
+  async removeCoupon() {
+    const payload = await apiRequest('/cart/coupon', {
+      method: 'DELETE',
+      headers: guestHeaders(),
+    })
+    return payload.data?.cart || null
+  },
 }

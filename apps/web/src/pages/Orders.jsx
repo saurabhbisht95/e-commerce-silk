@@ -14,7 +14,8 @@ function Orders() {
   const { refreshCart } = useCommerce()
   const [orders, setOrders] = useState([])
   const [message, setMessage] = useState(location.state?.orderNumber ? `Order ${location.state.orderNumber} placed successfully.` : '')
-  const [isWorking, setIsWorking] = useState(false)
+  const [isLoadingOrders, setIsLoadingOrders] = useState(true)
+  const [workingOrderId, setWorkingOrderId] = useState('')
 
   const loadOrders = useCallback(async () => {
     const nextOrders = await orderApi.myOrders()
@@ -38,6 +39,9 @@ function Orders() {
           toast.error(errorMessage)
         }
       })
+      .finally(() => {
+        if (isMounted) setIsLoadingOrders(false)
+      })
     return () => {
       isMounted = false
     }
@@ -51,7 +55,7 @@ function Orders() {
       return
     }
 
-    setIsWorking(true)
+    setWorkingOrderId(order.id)
     try {
       await orderApi.cancel(order.id, reason.trim())
       await loadOrders()
@@ -59,7 +63,7 @@ function Orders() {
     } catch (error) {
       toast.error(toUserMessage(error, 'Could not cancel this order.'))
     } finally {
-      setIsWorking(false)
+      setWorkingOrderId('')
     }
   }
 
@@ -71,7 +75,7 @@ function Orders() {
       return
     }
 
-    setIsWorking(true)
+    setWorkingOrderId(order.id)
     try {
       await orderApi.requestReturn(order.id, reason.trim())
       await loadOrders()
@@ -79,12 +83,12 @@ function Orders() {
     } catch (error) {
       toast.error(toUserMessage(error, 'Could not submit return request.'))
     } finally {
-      setIsWorking(false)
+      setWorkingOrderId('')
     }
   }
 
   const reorder = async order => {
-    setIsWorking(true)
+    setWorkingOrderId(order.id)
     try {
       await orderApi.reorder(order.id)
       await refreshCart()
@@ -92,7 +96,7 @@ function Orders() {
     } catch (error) {
       toast.error(toUserMessage(error, 'Could not reorder these items.'))
     } finally {
-      setIsWorking(false)
+      setWorkingOrderId('')
     }
   }
 
@@ -108,7 +112,11 @@ function Orders() {
           <p className="commerce-copy">Track order history and status.</p>
           {message && <div className={`commerce-alert ${location.state?.orderNumber ? 'commerce-success' : ''}`}>{message}</div>}
 
-          {orders.length === 0 ? (
+          {isLoadingOrders ? (
+            <div className="commerce-panel" style={{ marginTop: 18 }}>
+              <p>Loading your orders...</p>
+            </div>
+          ) : orders.length === 0 ? (
             <div className="commerce-panel" style={{ marginTop: 18 }}>
               <p>No orders yet.</p>
               <Link className="commerce-btn" to="/shop">Shop Collections</Link>
@@ -134,16 +142,16 @@ function Orders() {
                       <td>{new Date(order.createdAt).toLocaleDateString()}</td>
                       <td>
                         <div className="commerce-actions">
-                          <button className="commerce-btn commerce-btn--ghost" type="button" onClick={() => reorder(order)} disabled={isWorking}>
-                            Reorder
+                          <button className="commerce-btn commerce-btn--ghost" type="button" onClick={() => reorder(order)} disabled={Boolean(workingOrderId)}>
+                            {workingOrderId === order.id ? 'Working...' : 'Reorder'}
                           </button>
                           {canCancel(order.status) && (
-                            <button className="commerce-btn commerce-btn--ghost" type="button" onClick={() => cancelOrder(order)} disabled={isWorking}>
+                            <button className="commerce-btn commerce-btn--ghost" type="button" onClick={() => cancelOrder(order)} disabled={Boolean(workingOrderId)}>
                               Cancel
                             </button>
                           )}
                           {canReturn(order.status) && (
-                            <button className="commerce-btn commerce-btn--ghost" type="button" onClick={() => requestReturn(order)} disabled={isWorking}>
+                            <button className="commerce-btn commerce-btn--ghost" type="button" onClick={() => requestReturn(order)} disabled={Boolean(workingOrderId)}>
                               Return
                             </button>
                           )}

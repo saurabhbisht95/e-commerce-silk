@@ -1,10 +1,20 @@
 import { apiRequest } from './http'
 
+const createIdempotencyKey = () =>
+  globalThis.crypto?.randomUUID?.() || `order-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
 export const orderApi = {
   async create(body) {
+    const idempotencyKey = body.idempotencyKey || createIdempotencyKey()
     const payload = await apiRequest('/orders', {
       method: 'POST',
-      body,
+      headers: {
+        'Idempotency-Key': idempotencyKey,
+      },
+      body: {
+        ...body,
+        idempotencyKey,
+      },
     })
     return payload.data?.order || null
   },

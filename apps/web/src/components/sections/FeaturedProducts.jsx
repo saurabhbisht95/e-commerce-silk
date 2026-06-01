@@ -48,7 +48,7 @@ const HeartIcon = () => (
 function FeaturedProducts() {
   const toast = useToast();
   const [quickViewProduct, setQuickViewProduct] = useState(null);
-  const { products, featuredProducts, addToCart, addToWishlist } = useCommerce();
+  const { products, featuredProducts, addToCart, addToWishlist, isWishlistUpdating } = useCommerce();
 
   const openQuickViewFromKeyboard = (event, product) => {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -145,6 +145,7 @@ function FeaturedProducts() {
                         className="product-action-btn"
                         type="button"
                         aria-label="Like"
+                        disabled={isWishlistUpdating}
                         onClick={(event) => {
                           event.stopPropagation();
                           addToWishlist(product);

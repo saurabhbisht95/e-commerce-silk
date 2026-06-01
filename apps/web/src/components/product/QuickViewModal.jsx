@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import './QuickViewModal.css'
 
 const CloseIcon = () => (
@@ -8,6 +8,8 @@ const CloseIcon = () => (
 )
 
 function QuickViewModal({ product, products, onClose, onSelectProduct, onAddToCart }) {
+  const [isAdding, setIsAdding] = useState(false)
+
   useEffect(() => {
     if (!product) return undefined
 
@@ -29,6 +31,16 @@ function QuickViewModal({ product, products, onClose, onSelectProduct, onAddToCa
   const similarProducts = products
     .filter(item => item.id !== product.id && item.category === product.category)
     .slice(0, 4)
+
+  const addToCart = async () => {
+    if (isAdding) return
+    setIsAdding(true)
+    try {
+      await onAddToCart?.(product)
+    } finally {
+      setIsAdding(false)
+    }
+  }
 
   return (
     <div className="qv-overlay" role="presentation" onClick={onClose}>
@@ -55,7 +67,9 @@ function QuickViewModal({ product, products, onClose, onSelectProduct, onAddToCa
             <p className="qv-copy">
               Handpicked from the Doon Silk collection with a refined weave, soft drape, and a polished finish for festive and everyday styling.
             </p>
-            <button className="qv-primary-btn" type="button" onClick={() => onAddToCart?.(product)}>Add to Cart</button>
+            <button className="qv-primary-btn" type="button" onClick={addToCart} disabled={isAdding}>
+              {isAdding ? 'Adding...' : 'Add to Cart'}
+            </button>
           </div>
         </div>
 

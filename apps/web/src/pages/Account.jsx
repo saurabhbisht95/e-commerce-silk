@@ -32,6 +32,7 @@ function Account() {
   const [addresses, setAddresses] = useState([])
   const [addressForm, setAddressForm] = useState(emptyAddress)
   const [addressMessage, setAddressMessage] = useState('')
+  const [isLoadingAddresses, setIsLoadingAddresses] = useState(true)
   const [isSavingAddress, setIsSavingAddress] = useState(false)
 
   const loadAddresses = async () => {
@@ -53,6 +54,9 @@ function Account() {
           setAddressMessage(errorMessage)
           toast.error(errorMessage)
         }
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingAddresses(false)
       })
 
     return () => {
@@ -228,14 +232,16 @@ function Account() {
                   <button className="commerce-btn" type="submit" disabled={isSavingAddress}>
                     {isSavingAddress ? 'Saving...' : 'Save Address'}
                   </button>
-                  <button className="commerce-btn commerce-btn--ghost" type="button" onClick={resetAddressForm}>New Address</button>
+                  <button className="commerce-btn commerce-btn--ghost" type="button" onClick={resetAddressForm} disabled={isSavingAddress}>New Address</button>
                 </div>
               </form>
             </section>
 
             <section className="commerce-table-wrap">
               <h2>Saved Addresses</h2>
-              {addresses.length === 0 ? (
+              {isLoadingAddresses ? (
+                <p className="commerce-muted">Loading saved addresses...</p>
+              ) : addresses.length === 0 ? (
                 <p className="commerce-muted">No saved addresses yet.</p>
               ) : (
                 <div className="commerce-list">
@@ -245,11 +251,11 @@ function Account() {
                       <p>{address.fullName} - {address.phone}</p>
                       <p className="commerce-muted">{address.line1}{address.line2 ? `, ${address.line2}` : ''}, {address.city}, {address.state} {address.postalCode}</p>
                       <div className="commerce-actions">
-                        <button className="commerce-btn commerce-btn--ghost" type="button" onClick={() => editAddress(address)}>Edit</button>
+                        <button className="commerce-btn commerce-btn--ghost" type="button" onClick={() => editAddress(address)} disabled={isSavingAddress}>Edit</button>
                         {!address.isDefault && (
-                          <button className="commerce-btn commerce-btn--ghost" type="button" onClick={() => setDefaultAddress(address)}>Set Default</button>
+                          <button className="commerce-btn commerce-btn--ghost" type="button" onClick={() => setDefaultAddress(address)} disabled={isSavingAddress}>Set Default</button>
                         )}
-                        <button className="commerce-btn commerce-btn--ghost" type="button" onClick={() => deleteAddress(address)}>Delete</button>
+                        <button className="commerce-btn commerce-btn--ghost" type="button" onClick={() => deleteAddress(address)} disabled={isSavingAddress}>Delete</button>
                       </div>
                     </article>
                   ))}

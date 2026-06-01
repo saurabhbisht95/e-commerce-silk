@@ -173,6 +173,10 @@ function Checkout() {
                 <h2>Order Summary</h2>
                 <p>{cartProducts.length} item(s)</p>
                 <p>Subtotal: ₹{Number(cart?.pricing?.subtotal || 0).toLocaleString('en-IN')}</p>
+                {cart?.coupon?.code && <p>Coupon: <strong>{cart.coupon.code}</strong></p>}
+                {Number(cart?.pricing?.discount || 0) > 0 && (
+                  <p>Discount: -₹{Number(cart?.pricing?.discount || 0).toLocaleString('en-IN')}</p>
+                )}
                 <p>Shipping: ₹{Number(cart?.pricing?.shipping || 0).toLocaleString('en-IN')}</p>
                 <p><strong>Total: ₹{Number(cart?.pricing?.total || 0).toLocaleString('en-IN')}</strong></p>
               </aside>

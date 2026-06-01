@@ -4,6 +4,7 @@ import { cartApi } from '../api/cart'
 import { getBackendProductId, normalizeProduct, normalizeProducts, productApi } from '../api/products'
 import { wishlistApi } from '../api/wishlist'
 import { CommerceContext } from './commerceContext'
+import { useAuth } from './authContext'
 import { useToast } from './toastContext'
 import { toUserMessage } from '../utils/apiMessages'
 
@@ -28,12 +29,15 @@ const cartItemToProduct = item => {
 
 export function CommerceProvider({ children }) {
   const toast = useToast()
+  const { user } = useAuth()
   const hasShownCatalogError = useRef(false)
   const [products, setProducts] = useState(fallbackProducts)
   const [featuredProducts, setFeaturedProducts] = useState(fallbackProducts.slice(0, 10))
   const [cart, setCart] = useState(null)
   const [wishlist, setWishlist] = useState(null)
   const [isCatalogLoading, setIsCatalogLoading] = useState(true)
+  const [isCartUpdating, setIsCartUpdating] = useState(false)
+  const [isWishlistUpdating, setIsWishlistUpdating] = useState(false)
   const [apiError, setApiError] = useState(null)
 
   const refreshCart = useCallback(async () => {
@@ -49,6 +53,11 @@ export function CommerceProvider({ children }) {
   }, [toast])
 
   const refreshWishlist = useCallback(async () => {
+    if (!user) {
+      setWishlist(null)
+      return null
+    }
+
     try {
       const nextWishlist = await wishlistApi.get()
       setWishlist(nextWishlist)
@@ -56,7 +65,7 @@ export function CommerceProvider({ children }) {
     } catch {
       return null
     }
-  }, [])
+  }, [user])
 
   useEffect(() => {
     let isMounted = true
@@ -97,6 +106,25 @@ export function CommerceProvider({ children }) {
     }
   }, [toast])
 
+  useEffect(() => {
+    let isMounted = true
+
+    Promise.all([
+      cartApi.get().catch(() => null),
+      user ? wishlistApi.get().catch(() => null) : Promise.resolve(null),
+    ])
+      .then(([nextCart, nextWishlist]) => {
+        if (!isMounted) return
+        if (!user || nextCart) setCart(nextCart)
+        setWishlist(nextWishlist)
+      })
+      .catch(() => null)
+
+    return () => {
+      isMounted = false
+    }
+  }, [user])
+
   const addToCart = useCallback(async product => {
     const productId = getBackendProductId(product)
     if (!productId) {
@@ -104,6 +132,7 @@ export function CommerceProvider({ children }) {
       return null
     }
 
+    setIsCartUpdating(true)
     try {
       const nextCart = await cartApi.addItem({ productId, quantity: 1 })
       setCart(nextCart)
@@ -112,6 +141,8 @@ export function CommerceProvider({ children }) {
     } catch (error) {
       toast.error(toUserMessage(error, 'Could not add this product to cart.'))
       return null
+    } finally {
+      setIsCartUpdating(false)
     }
   }, [toast])
 
@@ -121,6 +152,7 @@ export function CommerceProvider({ children }) {
       return null
     }
 
+    setIsCartUpdating(true)
     try {
       const nextCart = await cartApi.updateItem({ productId, variantSku, quantity })
       setCart(nextCart)
@@ -129,6 +161,8 @@ export function CommerceProvider({ children }) {
     } catch (error) {
       toast.error(toUserMessage(error, 'Could not update the cart.'))
       return null
+    } finally {
+      setIsCartUpdating(false)
     }
   }, [toast])
 
@@ -138,6 +172,7 @@ export function CommerceProvider({ children }) {
       return null
     }
 
+    setIsCartUpdating(true)
     try {
       const nextCart = await cartApi.removeItem({ productId, variantSku })
       setCart(nextCart)
@@ -146,16 +181,60 @@ export function CommerceProvider({ children }) {
     } catch (error) {
       toast.error(toUserMessage(error, 'Could not remove this item from cart.'))
       return null
+    } finally {
+      setIsCartUpdating(false)
+    }
+  }, [toast])
+
+  const applyCoupon = useCallback(async code => {
+    const normalizedCode = String(code || '').trim().toUpperCase()
+    if (!normalizedCode) {
+      toast.warning('Enter a coupon code.')
+      return null
+    }
+
+    setIsCartUpdating(true)
+    try {
+      const nextCart = await cartApi.applyCoupon(normalizedCode)
+      setCart(nextCart)
+      toast.success(`Coupon ${normalizedCode} applied.`)
+      return nextCart
+    } catch (error) {
+      toast.error(toUserMessage(error, 'Could not apply this coupon.'))
+      return null
+    } finally {
+      setIsCartUpdating(false)
+    }
+  }, [toast])
+
+  const removeCoupon = useCallback(async () => {
+    setIsCartUpdating(true)
+    try {
+      const nextCart = await cartApi.removeCoupon()
+      setCart(nextCart)
+      toast.success('Coupon removed.')
+      return nextCart
+    } catch (error) {
+      toast.error(toUserMessage(error, 'Could not remove this coupon.'))
+      return null
+    } finally {
+      setIsCartUpdating(false)
     }
   }, [toast])
 
   const addToWishlist = useCallback(async product => {
+    if (!user) {
+      toast.warning('Please sign in to save products to your wishlist.')
+      return null
+    }
+
     const productId = getBackendProductId(product)
     if (!productId) {
       toast.error('This product cannot be saved yet.')
       return null
     }
 
+    setIsWishlistUpdating(true)
     try {
       const nextWishlist = await wishlistApi.add(productId)
       setWishlist(nextWishlist)
@@ -165,8 +244,10 @@ export function CommerceProvider({ children }) {
       setApiError(error.message)
       toast.error(toUserMessage(error, 'Could not save this product to wishlist.'))
       return null
+    } finally {
+      setIsWishlistUpdating(false)
     }
-  }, [toast])
+  }, [toast, user])
 
   const removeFromWishlist = useCallback(async product => {
     const productId = getBackendProductId(product)
@@ -175,6 +256,7 @@ export function CommerceProvider({ children }) {
       return null
     }
 
+    setIsWishlistUpdating(true)
     try {
       const nextWishlist = await wishlistApi.remove(productId)
       setWishlist(nextWishlist)
@@ -184,6 +266,8 @@ export function CommerceProvider({ children }) {
       setApiError(error.message)
       toast.error(toUserMessage(error, 'Could not update your wishlist.'))
       return null
+    } finally {
+      setIsWishlistUpdating(false)
     }
   }, [toast])
 
@@ -204,10 +288,14 @@ export function CommerceProvider({ children }) {
       wishlist,
       wishlistProducts,
       isCatalogLoading,
+      isCartUpdating,
+      isWishlistUpdating,
       apiError,
       addToCart,
       updateCartItem,
       removeCartItem,
+      applyCoupon,
+      removeCoupon,
       addToWishlist,
       removeFromWishlist,
       refreshCart,
@@ -222,10 +310,14 @@ export function CommerceProvider({ children }) {
       wishlist,
       wishlistProducts,
       isCatalogLoading,
+      isCartUpdating,
+      isWishlistUpdating,
       apiError,
       addToCart,
       updateCartItem,
       removeCartItem,
+      applyCoupon,
+      removeCoupon,
       addToWishlist,
       removeFromWishlist,
       refreshCart,

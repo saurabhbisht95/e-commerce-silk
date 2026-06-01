@@ -35,7 +35,7 @@ function Shop() {
   const toast = useToast();
   const [activeCategory, setActiveCategory] = useState('All');
   const [quickViewProduct, setQuickViewProduct] = useState(null);
-  const { products, addToCart, addToWishlist } = useCommerce();
+  const { products, addToCart, addToWishlist, isWishlistUpdating } = useCommerce();
 
   const openQuickViewFromKeyboard = (event, product) => {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -142,6 +142,7 @@ function Shop() {
                         className="sp-action-btn"
                         type="button"
                         aria-label="Like"
+                        disabled={isWishlistUpdating}
                         onClick={(event) => {
                           event.stopPropagation();
                           addToWishlist(product);
