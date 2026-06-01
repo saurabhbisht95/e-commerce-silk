@@ -32,6 +32,10 @@ export const createApp = () => {
   app.use(compression());
   app.use(cookieParser(config.COOKIE_SECRET));
   app.use(requestLogger);
+  app.use((req, res, next) => {
+    res.setHeader('X-Request-Id', req.id);
+    next();
+  });
 
   app.use('/api/v1/payments/webhooks', express.raw({ type: '*/*', limit: '2mb' }), paymentWebhookRoutes);
 

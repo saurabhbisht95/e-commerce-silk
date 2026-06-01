@@ -919,7 +919,7 @@ function App() {
             </Panel>
             <Panel title="Recent API Requests">
               <DataTable
-                columns={['Time', 'Method', 'Endpoint', 'Status', 'Duration']}
+                columns={['Time', 'Method', 'Endpoint', 'Status', 'Duration', 'Request ID']}
                 rows={requestLog}
                 renderRow={entry => (
                   <tr key={entry.id} className={entry.ok ? '' : 'row-error'}>
@@ -928,6 +928,7 @@ function App() {
                     <td>{entry.endpoint}</td>
                     <td>{entry.status}</td>
                     <td>{entry.duration} ms</td>
+                    <td>{entry.requestId ? entry.requestId.slice(0, 8) : '-'}</td>
                   </tr>
                 )}
                 empty="No API requests logged yet."

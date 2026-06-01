@@ -1,6 +1,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
 const STOREFRONT_URL = import.meta.env.VITE_STOREFRONT_URL || 'http://localhost:5173'
 const ENABLE_CSRF = import.meta.env.VITE_ENABLE_CSRF === 'true'
+const API_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS || 15000)
 const TOKEN_KEY = 'doon_silk_admin_access_token'
 
 let csrfToken = null
@@ -20,6 +21,7 @@ export class ApiError extends Error {
     this.name = 'ApiError'
     this.status = details.status || 0
     this.payload = details.payload || null
+    this.requestId = details.requestId || null
   }
 }
 
@@ -40,6 +42,22 @@ export const tokenStore = {
 }
 
 const isFormData = body => typeof FormData !== 'undefined' && body instanceof FormData
+
+const createRequestId = () =>
+  globalThis.crypto?.randomUUID?.() || `admin-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+const fetchWithTimeout = async (url, options = {}) => {
+  if (!API_TIMEOUT_MS || options.signal) return fetch(url, options)
+
+  const controller = new AbortController()
+  const timeout = globalThis.setTimeout(() => controller.abort(), API_TIMEOUT_MS)
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal })
+  } finally {
+    globalThis.clearTimeout(timeout)
+  }
+}
 
 const buildUrl = endpoint => {
   if (/^https?:\/\//.test(endpoint)) return endpoint
@@ -82,7 +100,7 @@ const canRefreshForEndpoint = endpoint => {
 const getCsrfToken = async () => {
   if (!ENABLE_CSRF || csrfToken) return csrfToken
   try {
-    const response = await fetch(buildUrl('/security/csrf-token'), { credentials: 'include' })
+    const response = await fetchWithTimeout(buildUrl('/security/csrf-token'), { credentials: 'include' })
     if (!response.ok) return null
     const payload = await response.json()
     csrfToken = payload.data?.csrfToken || null
@@ -104,10 +122,11 @@ const refreshAdminSession = async () => {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       const headers = new Headers({ 'Content-Type': 'application/json' })
+      headers.set('X-Request-Id', createRequestId())
       const tokenValue = await getCsrfToken()
       if (tokenValue) headers.set('X-CSRF-Token', tokenValue)
 
-      const response = await fetch(buildUrl('/auth/refresh-token'), {
+      const response = await fetchWithTimeout(buildUrl('/auth/refresh-token'), {
         method: 'POST',
         credentials: 'include',
         headers,
@@ -115,8 +134,9 @@ const refreshAdminSession = async () => {
       })
       const contentType = response.headers.get('content-type') || ''
       const payload = contentType.includes('application/json') ? await response.json() : null
+      const requestId = response.headers.get('X-Request-Id')
 
-      if (!response.ok) throw new ApiError(payload?.message || 'Admin session expired', { status: response.status, payload })
+      if (!response.ok) throw new ApiError(payload?.message || 'Admin session expired', { status: response.status, payload, requestId })
       tokenStore.set(payload?.data?.accessToken)
       return payload
     })().finally(() => {
@@ -131,8 +151,10 @@ export const adminRequest = async (endpoint, options = {}, retryState = { hasRet
   const method = options.method || 'GET'
   const headers = new Headers(options.headers || {})
   const token = tokenStore.get()
+  const requestId = headers.get('X-Request-Id') || createRequestId()
   const startedAt = performance.now()
 
+  headers.set('X-Request-Id', requestId)
   if (token) headers.set('Authorization', `Bearer ${token}`)
   if (options.body && !isFormData(options.body) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
@@ -145,23 +167,28 @@ export const adminRequest = async (endpoint, options = {}, retryState = { hasRet
 
   let response
   try {
-    response = await fetch(buildUrl(endpoint), {
+    response = await fetchWithTimeout(buildUrl(endpoint), {
       ...options,
       method,
       credentials: 'include',
       headers,
       body: options.body && !isFormData(options.body) ? JSON.stringify(options.body) : options.body,
     })
-  } catch {
-    recordRequest({ method, endpoint, status: 'NETWORK', duration: Math.round(performance.now() - startedAt), ok: false })
-    throw new ApiError('Backend is unreachable. Check API server, Atlas DNS/network, and CORS settings.')
+  } catch (error) {
+    recordRequest({ method, endpoint, status: 'NETWORK', duration: Math.round(performance.now() - startedAt), ok: false, requestId })
+    const message = error?.name === 'AbortError'
+      ? 'Backend request timed out. Check API server, Atlas DNS/network, and CORS settings.'
+      : 'Backend is unreachable. Check API server, Atlas DNS/network, and CORS settings.'
+
+    throw new ApiError(message, { requestId })
   }
 
   const contentType = response.headers.get('content-type') || ''
   const payload = contentType.includes('application/json') ? await response.json() : null
   const duration = Math.round(performance.now() - startedAt)
+  const responseRequestId = response.headers.get('X-Request-Id') || requestId
 
-  recordRequest({ method, endpoint, status: response.status, duration, ok: response.ok })
+  recordRequest({ method, endpoint, status: response.status, duration, ok: response.ok, requestId: responseRequestId })
 
   if (!response.ok) {
     if (response.status === 401 && !retryState.hasRetried && canRefreshForEndpoint(endpoint)) {
@@ -176,6 +203,7 @@ export const adminRequest = async (endpoint, options = {}, retryState = { hasRet
     throw new ApiError(payload?.message || `Request failed with status ${response.status}`, {
       status: response.status,
       payload,
+      requestId: responseRequestId,
     })
   }
 
@@ -192,7 +220,7 @@ export const resolveMediaUrl = url => {
 
 export const adminApi = {
   async health() {
-    const response = await fetch(apiConfig.healthUrl, { credentials: 'include' })
+    const response = await fetchWithTimeout(apiConfig.healthUrl, { credentials: 'include' })
     return response.json()
   },
   async login(credentials) {
