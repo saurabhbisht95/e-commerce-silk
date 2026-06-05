@@ -9,6 +9,11 @@
   background-color: var(--color-cream-light);
   box-shadow: 0 4px 20px rgba(110, 30, 30, 0.05);
   font-family: var(--font-body);
+  transition: box-shadow var(--transition-base), background-color var(--transition-base);
+}
+
+.ds-header--scrolled {
+  box-shadow: 0 10px 28px rgba(110, 30, 30, 0.12);
 }
 
 /* ━━━ TOP STRIP ━━━ */
@@ -91,6 +96,7 @@
 /* ━━━ MAIN MIDDLE AREA ━━━ */
 .ds-header__body {
   position: relative;
+  transition: transform var(--transition-base);
 }
 
 .ds-header__main {
@@ -100,6 +106,7 @@
   padding-block: var(--space-4) 0;
   min-height: 76px;
   position: relative;
+  transition: min-height var(--transition-base), padding var(--transition-base);
 }
 
 .ds-hamburger {
@@ -131,6 +138,12 @@
   flex-direction: column;
   align-items: center;
   z-index: 10;
+  opacity: 1;
+  pointer-events: auto;
+  transition:
+    opacity var(--transition-base),
+    transform var(--transition-base),
+    visibility var(--transition-base);
 }
 
 @media (max-width: 768px) {
@@ -462,6 +475,12 @@
   justify-content: center;
   padding-block: var(--space-4);
   background-color: var(--color-cream-light);
+  transform: translateY(0);
+  transition:
+    padding var(--transition-base),
+    transform var(--transition-base),
+    margin var(--transition-base),
+    border-color var(--transition-base);
 }
 
 .ds-nav-group {
@@ -469,6 +488,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  transition: flex var(--transition-base), gap var(--transition-base);
 }
 
 .ds-nav-left {
@@ -482,6 +502,7 @@
 .ds-nav-logo-spacer {
   width: 380px;
   flex-shrink: 0;
+  transition: width var(--transition-base);
 }
 
 @media (max-width: 1500px) {
@@ -502,6 +523,18 @@
   .ds-nav-bar {
     display: none;
   }
+
+  .ds-header--scrolled .ds-header__main {
+    min-height: 56px;
+    padding-block: 0;
+  }
+
+  .ds-header--scrolled .ds-logo-container {
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, -18px) scale(0.9);
+    visibility: hidden;
+  }
 }
 
 .nav-link-wrapper {
@@ -511,6 +544,7 @@
   gap: var(--space-1);
   width: 120px;
   text-align: center;
+  transition: width var(--transition-base), transform var(--transition-base);
 }
 
 .nav-link {
@@ -564,6 +598,87 @@
 
 .nav-link-wrapper .nav-sep {
   display: none;
+}
+
+@media (min-width: 1041px) {
+  .ds-header--scrolled .ds-header__body {
+    min-height: 64px;
+  }
+
+  .ds-header--scrolled .ds-header__main {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    z-index: 12;
+    width: 100%;
+    max-width: var(--container-max);
+    min-height: 64px;
+    padding-block: 0;
+    padding-inline: var(--container-pad);
+    pointer-events: none;
+    transform: translateX(-50%);
+  }
+
+  .ds-header--scrolled .ds-hamburger,
+  .ds-header--scrolled .ds-header__actions {
+    pointer-events: auto;
+  }
+
+  .ds-header--scrolled .ds-hamburger {
+    width: clamp(56px, 7vw, 84px);
+  }
+
+  .ds-header--scrolled .ds-header__actions {
+    width: auto;
+    min-width: clamp(112px, 11vw, 148px);
+    gap: var(--space-4);
+  }
+
+  .ds-header--scrolled .ds-logo-container {
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, -22px) scale(0.9);
+    visibility: hidden;
+  }
+
+  .ds-header--scrolled .ds-nav-bar {
+    min-height: 64px;
+    margin-top: 0;
+    padding-block: 0;
+    padding-inline: clamp(122px, 13vw, 170px);
+    transform: none;
+  }
+
+  .ds-header--scrolled .ds-nav-group {
+    flex: 0 1 auto;
+    min-width: 0;
+    gap: clamp(0.55rem, 1vw, var(--space-3));
+  }
+
+  .ds-header--scrolled .ds-nav-left,
+  .ds-header--scrolled .ds-nav-right {
+    justify-content: center;
+  }
+
+  .ds-header--scrolled .ds-nav-logo-spacer {
+    width: 0;
+  }
+
+  .ds-header--scrolled .nav-link-wrapper {
+    width: clamp(82px, 7.1vw, 106px);
+    gap: 0;
+    transform: none;
+  }
+
+  .ds-header--scrolled .nav-link {
+    font-size: clamp(0.68rem, 0.72vw, 0.82rem);
+    letter-spacing: 0.12em;
+    white-space: nowrap;
+  }
+
+  .ds-header--scrolled .nav-deco {
+    display: none;
+  }
 }
 
 /* Interactive header panels */
