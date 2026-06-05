@@ -2,13 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { adminApi, apiConfig, resolveMediaUrl, setRequestSubscriber, tokenStore } from './api'
 
 const sections = [
-  ['dashboard', 'Dashboard'],
-  ['products', 'Products'],
-  ['orders', 'Orders'],
-  ['content', 'Content'],
-  ['coupons', 'Coupons'],
-  ['customers', 'Customers'],
-  ['debug', 'Debug'],
+  { key: 'dashboard', label: 'Dashboard', short: 'DB', description: 'Daily command center' },
+  { key: 'products', label: 'Products', short: 'PR', description: 'Catalog and stock' },
+  { key: 'orders', label: 'Orders', short: 'OR', description: 'Fulfillment queue' },
+  { key: 'content', label: 'Content', short: 'CO', description: 'Banners and categories' },
+  { key: 'coupons', label: 'Coupons', short: 'CP', description: 'Offers and rules' },
+  { key: 'customers', label: 'Customers', short: 'CU', description: 'Users and access' },
+  { key: 'debug', label: 'Debug', short: 'DG', description: 'Runtime requests' },
 ]
 
 const productStatuses = ['active', 'draft', 'archived']
@@ -88,6 +88,10 @@ function App() {
   const [user, setUser] = useState(null)
   const [authChecked, setAuthChecked] = useState(false)
   const [activeSection, setActiveSection] = useState('dashboard')
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window === 'undefined') return true
+    return window.matchMedia('(min-width: 981px)').matches
+  })
   const [toast, setToast] = useState(null)
   const [requestLog, setRequestLog] = useState([])
   const [loading, setLoading] = useState(false)
@@ -115,6 +119,29 @@ function App() {
     setToast({ type, message, id: Date.now() })
     window.setTimeout(() => setToast(current => (current?.message === message ? null : current)), 4200)
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+
+    const desktopQuery = window.matchMedia('(min-width: 981px)')
+    const syncSidebar = event => setSidebarOpen(event.matches)
+
+    desktopQuery.addEventListener('change', syncSidebar)
+    return () => desktopQuery.removeEventListener('change', syncSidebar)
+  }, [])
+
+  useEffect(() => {
+    if (!sidebarOpen || typeof window === 'undefined') return undefined
+
+    const closeOnEscape = event => {
+      if (event.key === 'Escape' && window.matchMedia('(max-width: 980px)').matches) {
+        setSidebarOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [sidebarOpen])
 
   useEffect(() => {
     setRequestSubscriber(entry => {
@@ -212,14 +239,25 @@ function App() {
     return () => window.clearTimeout(timer)
   }, [loadAdminData, user])
 
+  const activeSectionMeta = useMemo(
+    () => sections.find(section => section.key === activeSection) || sections[0],
+    [activeSection],
+  )
+
   const dashboardCards = useMemo(() => [
-    ['Revenue', money(dashboard?.totalRevenue)],
-    ['Orders', dashboard?.totalOrders || 0],
-    ['Pending', dashboard?.pendingOrders || 0],
-    ['Products', dashboard?.activeProducts || 0],
-    ['Users', dashboard?.totalUsers || 0],
-    ['Low Stock', dashboard?.lowStockCount || lowStock.length],
+    { label: 'Revenue', value: money(dashboard?.totalRevenue), detail: 'Store revenue', tone: 'gold' },
+    { label: 'Orders', value: dashboard?.totalOrders || 0, detail: 'Total orders', tone: 'maroon' },
+    { label: 'Pending', value: dashboard?.pendingOrders || 0, detail: 'Needs action', tone: 'amber' },
+    { label: 'Products', value: dashboard?.activeProducts || 0, detail: 'Active catalog', tone: 'green' },
+    { label: 'Users', value: dashboard?.totalUsers || 0, detail: 'Customer accounts', tone: 'blue' },
+    { label: 'Low Stock', value: dashboard?.lowStockCount || lowStock.length, detail: 'Inventory alerts', tone: 'red' },
   ], [dashboard, lowStock.length])
+
+  const closeSidebarOnMobile = useCallback(() => {
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 980px)').matches) {
+      setSidebarOpen(false)
+    }
+  }, [])
 
   const updateLogin = event => setLoginForm(current => ({ ...current, [event.target.name]: event.target.value }))
   const updateProduct = event => {
@@ -599,33 +637,82 @@ function App() {
   }
 
   return (
-    <div className="admin-app">
-      <aside className="sidebar">
-        <div>
-          <p className="eyebrow">Doon Silk</p>
-          <h1>Admin</h1>
+    <div className={`admin-app ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
+      <button className="sidebar-backdrop" type="button" aria-label="Close sidebar" onClick={() => setSidebarOpen(false)} />
+      <aside className="sidebar" aria-label="Admin navigation">
+        <div className="sidebar-head">
+          <div className="brand-mark" aria-hidden="true">DS</div>
+          <div className="brand-copy">
+            <p className="eyebrow">Doon Silk</p>
+            <h1>Admin</h1>
+          </div>
+          <button
+            className="icon-btn sidebar-toggle"
+            type="button"
+            aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+            aria-expanded={sidebarOpen}
+            onClick={() => setSidebarOpen(current => !current)}
+          >
+            <span className="toggle-icon" aria-hidden="true" />
+          </button>
+        </div>
+        <div className="sidebar-summary">
+          <span>Revenue</span>
+          <strong>{money(dashboard?.totalRevenue)}</strong>
+          <small>{dashboard?.totalOrders || 0} orders in system</small>
         </div>
         <nav>
-          {sections.map(([key, label]) => (
-            <button className={activeSection === key ? 'active' : ''} type="button" key={key} onClick={() => setActiveSection(key)}>
-              {label}
+          {sections.map(section => (
+            <button
+              className={activeSection === section.key ? 'active' : ''}
+              type="button"
+              key={section.key}
+              title={section.label}
+              onClick={() => {
+                setActiveSection(section.key)
+                closeSidebarOnMobile()
+              }}
+            >
+              <span className="nav-icon" aria-hidden="true">{section.short}</span>
+              <span className="nav-copy">
+                <span>{section.label}</span>
+                <small>{section.description}</small>
+              </span>
             </button>
           ))}
         </nav>
         <div className="sidebar-footer">
-          <small>{user.name}</small>
-          <small>{user.email}</small>
+          <div className="user-chip" title={user.email}>
+            <span>{(user.name || user.email || 'A').slice(0, 1).toUpperCase()}</span>
+            <div>
+              <strong>{user.name}</strong>
+              <small>{user.email}</small>
+            </div>
+          </div>
           <button type="button" onClick={logout}>Sign out</button>
         </div>
       </aside>
 
       <main className="workspace">
         <header className="topbar">
-          <div>
-            <h2>{sections.find(([key]) => key === activeSection)?.[1]}</h2>
-            <p>{apiConfig.apiBaseUrl}</p>
+          <div className="topbar-title">
+            <button
+              className="icon-btn sidebar-mobile-toggle"
+              type="button"
+              aria-label="Open sidebar"
+              aria-expanded={sidebarOpen}
+              onClick={() => setSidebarOpen(true)}
+            >
+              <span className="hamburger-icon" aria-hidden="true" />
+            </button>
+            <div>
+              <p className="eyebrow">Admin Workspace</p>
+              <h2>{activeSectionMeta.label}</h2>
+              <p>{activeSectionMeta.description}</p>
+            </div>
           </div>
           <div className="topbar-actions">
+            <span className={`api-chip ${health?.success ? 'ok' : 'bad'}`}>{health?.success ? 'API online' : 'API issue'}</span>
             <a href={apiConfig.storefrontUrl} target="_blank" rel="noreferrer">Open Storefront</a>
             <a href={apiConfig.apiDocsUrl} target="_blank" rel="noreferrer">Swagger</a>
             <button type="button" onClick={loadAdminData} disabled={loading}>{loading ? 'Loading...' : 'Refresh'}</button>
@@ -635,10 +722,11 @@ function App() {
         {activeSection === 'dashboard' && (
           <section className="section-grid">
             <div className="metric-grid">
-              {dashboardCards.map(([label, value]) => (
-                <article className="metric-card" key={label}>
-                  <span>{label}</span>
-                  <strong>{value}</strong>
+              {dashboardCards.map(card => (
+                <article className={`metric-card metric-${card.tone}`} key={card.label}>
+                  <span>{card.label}</span>
+                  <strong>{card.value}</strong>
+                  <small>{card.detail}</small>
                 </article>
               ))}
             </div>
