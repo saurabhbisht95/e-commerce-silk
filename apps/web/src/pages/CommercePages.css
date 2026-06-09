@@ -88,6 +88,12 @@
 }
 
 .commerce-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
   border: 1px solid var(--color-maroon);
   border-radius: var(--radius-full);
   background: var(--color-maroon);
@@ -97,6 +103,18 @@
   padding: 0 20px;
   font: inherit;
   font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background var(--transition-base), color var(--transition-base), border-color var(--transition-base), transform var(--transition-base);
+}
+
+.commerce-btn:hover {
+  background: var(--color-maroon-dark);
+  border-color: var(--color-maroon-dark);
+  color: #fff;
+  transform: translateY(-1px);
 }
 
 .commerce-btn--ghost {
@@ -104,9 +122,24 @@
   color: var(--color-maroon);
 }
 
+.commerce-btn--ghost:hover {
+  background: rgba(110, 30, 30, 0.08);
+  border-color: var(--color-maroon);
+  color: var(--color-maroon);
+}
+
+.commerce-btn--block {
+  width: 100%;
+}
+
+.commerce-panel > .commerce-btn {
+  margin-top: 10px;
+}
+
 .commerce-btn:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+  transform: none;
 }
 
 .commerce-alert {
@@ -204,5 +237,15 @@
 
   .commerce-table-wrap {
     overflow-x: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .commerce-actions {
+    align-items: stretch;
+  }
+
+  .commerce-actions .commerce-btn {
+    width: 100%;
   }
 }

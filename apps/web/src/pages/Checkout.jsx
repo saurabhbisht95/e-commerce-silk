@@ -134,12 +134,12 @@ function Checkout() {
           {!user ? (
             <div className="commerce-panel">
               <p>Please sign in before checkout.</p>
-              <Link className="commerce-btn" to="/login">Sign In</Link>
+              <Link className="commerce-btn commerce-btn--block" to="/login">Sign In</Link>
             </div>
           ) : cartProducts.length === 0 ? (
             <div className="commerce-panel">
               <p>Your cart is empty.</p>
-              <Link className="commerce-btn" to="/shop">Shop Collections</Link>
+              <Link className="commerce-btn commerce-btn--block" to="/shop">Shop Collections</Link>
             </div>
           ) : (
             <div className="commerce-grid">
