@@ -106,8 +106,18 @@ const NavDeco = () => (
   </div>
 )
 
-const HEADER_LINKS = ['Fabric', 'Kurta', 'Saree', 'Shawls', 'Muffler', 'Stoles', 'Suits', 'Collections']
+const HEADER_LINKS = [
+  { label: 'Fabric', category: 'fabrics' },
+  { label: 'Kurta', category: 'kurtas' },
+  { label: 'Saree', category: 'sarees' },
+  { label: 'Shawls', category: 'shawls' },
+  { label: 'Muffler', category: 'mufflers' },
+  { label: 'Stoles', category: 'stoles' },
+  { label: 'Suits', category: 'suits' },
+  { label: 'Collections', category: '' },
+]
 const ADMIN_URL = import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174'
+const shopPathFor = item => (item.category ? `/shop?category=${encodeURIComponent(item.category)}` : '/shop')
 
 function Header() {
   const scrollY = useScrollPosition()
@@ -217,8 +227,8 @@ function Header() {
         <nav className="ds-nav-bar container">
           <div className="ds-nav-group ds-nav-left">
             {HEADER_LINKS.slice(0, 4).map((link, index) => (
-              <div className="nav-link-wrapper" key={link}>
-                <Link to="/shop" className="nav-link" onClick={closePanel}>{link}</Link>
+              <div className="nav-link-wrapper" key={link.label}>
+                <Link to={shopPathFor(link)} className="nav-link" onClick={closePanel}>{link.label}</Link>
                 <NavDeco />
                 {index < 3 && <span className="nav-sep">|</span>}
               </div>
@@ -229,8 +239,8 @@ function Header() {
 
           <div className="ds-nav-group ds-nav-right">
             {HEADER_LINKS.slice(4).map((link, index) => (
-              <div className="nav-link-wrapper" key={link}>
-                <Link to="/shop" className="nav-link" onClick={closePanel}>{link}</Link>
+              <div className="nav-link-wrapper" key={link.label}>
+                <Link to={shopPathFor(link)} className="nav-link" onClick={closePanel}>{link.label}</Link>
                 <NavDeco />
                 {index < 3 && <span className="nav-sep">|</span>}
               </div>
@@ -257,8 +267,8 @@ function Header() {
             {activePanel === 'menu' && (
               <div className="ds-panel-grid ds-panel-grid--menu">
                 {HEADER_LINKS.map(item => (
-                  <Link key={item} to="/shop" className="ds-panel-link" onClick={closePanel}>
-                    {item}
+                  <Link key={item.label} to={shopPathFor(item)} className="ds-panel-link" onClick={closePanel}>
+                    {item.label}
                   </Link>
                 ))}
               </div>

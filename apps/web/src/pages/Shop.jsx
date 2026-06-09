@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
 import Header from '../components/layout/Header.jsx';
 import Footer from '../components/layout/Footer.jsx';
 import QuickViewModal from '../components/product/QuickViewModal.jsx';
+import { productApi } from '../api/products';
 import { useCommerce } from '../context/commerceContext';
 import { useToast } from '../context/toastContext';
 import './Shop.css';
@@ -31,11 +33,43 @@ const HeartIcon = () => (
   </svg>
 );
 
+const CATEGORY_ALIASES = {
+  fabric: 'fabrics',
+  kurta: 'kurtas',
+  saree: 'sarees',
+  shawl: 'shawls',
+  muffler: 'mufflers',
+  stole: 'stoles',
+  suit: 'suits',
+}
+
+const slugifyCategory = value => {
+  const slug = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+  return CATEGORY_ALIASES[slug] || slug
+}
+
+const labelFromSlug = slug => slug
+  .split('-')
+  .filter(Boolean)
+  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+  .join(' ')
+
 function Shop() {
   const toast = useToast();
-  const [activeCategory, setActiveCategory] = useState('All');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [quickViewProduct, setQuickViewProduct] = useState(null);
-  const { products, addToCart, addToWishlist, isWishlistUpdating } = useCommerce();
+  const [shopProducts, setShopProducts] = useState([]);
+  const [isShopLoading, setIsShopLoading] = useState(false);
+  const [shopError, setShopError] = useState(null);
+  const { products, addToCart, addToWishlist, isCatalogLoading, isWishlistUpdating } = useCommerce();
+
+  const selectedCategory = slugifyCategory(searchParams.get('category'));
 
   const openQuickViewFromKeyboard = (event, product) => {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -44,13 +78,71 @@ function Shop() {
     }
   };
 
-  // Get unique categories
-  const categories = ['All', ...new Set(products.map(p => p.category))];
+  const categoryOptions = useMemo(() => {
+    const categoryMap = new Map();
+    categoryMap.set('', { label: 'All', slug: '', count: products.length });
 
-  // Filter products
-  const filteredProducts = activeCategory === 'All'
-    ? products
-    : products.filter(p => p.category === activeCategory);
+    products.forEach(product => {
+      const slug = slugifyCategory(product.category);
+      if (!slug) return;
+      const current = categoryMap.get(slug);
+      categoryMap.set(slug, {
+        label: current?.label || product.category || labelFromSlug(slug),
+        slug,
+        count: (current?.count || 0) + 1,
+      });
+    });
+
+    return [...categoryMap.values()];
+  }, [products]);
+
+  const selectedCategoryLabel = selectedCategory
+    ? categoryOptions.find(category => category.slug === selectedCategory)?.label || labelFromSlug(selectedCategory)
+    : 'All Collections';
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadShopProducts = async () => {
+      setIsShopLoading(true);
+      setShopError(null);
+
+      try {
+        const result = await productApi.list({
+          limit: 100,
+          sort: 'newest',
+          ...(selectedCategory ? { categorySlug: selectedCategory } : {}),
+        });
+
+        if (!isMounted) return;
+        setShopProducts(result.products);
+      } catch (error) {
+        if (!isMounted) return;
+        const fallbackProducts = selectedCategory
+          ? products.filter(product => slugifyCategory(product.category) === selectedCategory)
+          : products;
+        setShopProducts(fallbackProducts);
+        setShopError(error.message);
+      } finally {
+        if (isMounted) setIsShopLoading(false);
+      }
+    };
+
+    loadShopProducts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [products, selectedCategory]);
+
+  const handleCategoryChange = slug => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (slug) nextParams.set('category', slug);
+    else nextParams.delete('category');
+    setSearchParams(nextParams);
+  };
+
+  const filteredProducts = shopProducts;
 
   return (
     <motion.div
@@ -76,15 +168,15 @@ function Shop() {
           <aside className="shop-sidebar">
             <h3 className="filter-title">Categories</h3>
             <ul className="filter-list">
-              {categories.map(cat => (
-                <li key={cat}>
+              {categoryOptions.map(category => (
+                <li key={category.slug || 'all'}>
                   <button
-                    className={`filter-btn ${activeCategory === cat ? 'active' : ''}`}
-                    onClick={() => setActiveCategory(cat)}
+                    className={`filter-btn ${selectedCategory === category.slug ? 'active' : ''}`}
+                    onClick={() => handleCategoryChange(category.slug)}
                   >
-                    {cat}
+                    {category.label}
                     <span className="filter-count">
-                      ({cat === 'All' ? products.length : products.filter(p => p.category === cat).length})
+                      ({category.count})
                     </span>
                   </button>
                 </li>
@@ -95,7 +187,12 @@ function Shop() {
           {/* Product Grid */}
           <div className="shop-content">
             <div className="shop-header-actions">
-              <span className="results-count">Showing {filteredProducts.length} results</span>
+              <span className="results-count">
+                {isShopLoading || isCatalogLoading
+                  ? `Loading ${selectedCategoryLabel}...`
+                  : `Showing ${filteredProducts.length} ${selectedCategoryLabel} result${filteredProducts.length === 1 ? '' : 's'}`}
+              </span>
+              {shopError && <span className="shop-data-note">Showing saved catalog while backend reconnects</span>}
             </div>
 
             <div className="shop-grid">
@@ -163,6 +260,13 @@ function Shop() {
                 </div>
               ))}
             </div>
+
+            {!isShopLoading && !filteredProducts.length && (
+              <div className="shop-empty-state">
+                <h3>No products found</h3>
+                <p>Try another category or check back after the catalog is updated.</p>
+              </div>
+            )}
           </div>
         </div>
       </main>

@@ -145,6 +145,7 @@
 // export default CategorySection;
 
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import './CategorySection.css';
 
 // ✅ Import all images at the top
@@ -166,14 +167,14 @@ const OrnamentIcon = () => (
 
 // ✅ Use imported image variables, not string paths
 const categories = [
-  { id: 'fabric', title: 'Fabric', image: fabricImg, link: '#fabric' },
-  { id: 'kurta', title: 'Kurta', image: kurtaImg, link: '#kurta' },
-  { id: 'saree', title: 'Saree', image: sareeImg, link: '#saree' },
-  { id: 'shawls', title: 'Shawls', image: shawlImg, link: '#shawls' },
-  { id: 'muffler', title: 'Muffler', image: mufflerImg, link: '#muffler' },
-  { id: 'stoles', title: 'Stoles', image: stoleImg, link: '#stoles' },
-  { id: 'suits', title: 'Suits', image: suitImg, link: '#suits' },
-  { id: 'collections', title: 'Collections', image: collectionsImg, link: '#collections' },
+  { id: 'fabric', title: 'Fabric', image: fabricImg, link: '/shop?category=fabrics' },
+  { id: 'kurta', title: 'Kurta', image: kurtaImg, link: '/shop?category=kurtas' },
+  { id: 'saree', title: 'Saree', image: sareeImg, link: '/shop?category=sarees' },
+  { id: 'shawls', title: 'Shawls', image: shawlImg, link: '/shop?category=shawls' },
+  { id: 'muffler', title: 'Muffler', image: mufflerImg, link: '/shop?category=mufflers' },
+  { id: 'stoles', title: 'Stoles', image: stoleImg, link: '/shop?category=stoles' },
+  { id: 'suits', title: 'Suits', image: suitImg, link: '/shop?category=suits' },
+  { id: 'collections', title: 'Collections', image: collectionsImg, link: '/shop' },
 ];
 
 const containerVariants = {
@@ -212,13 +213,12 @@ function CategorySection() {
           viewport={{ once: true, margin: "-100px" }}
         >
           {categories.map((category) => (
-            <motion.a
-              href={category.link}
+            <motion.div
               className="category-card"
               key={category.id}
               variants={cardVariants}
             >
-              <div className="category-card-inner">
+              <Link to={category.link} className="category-card-inner">
                 <div className="category-image-wrapper arch-clip">
                   <img
                     src={category.image}
@@ -236,8 +236,8 @@ function CategorySection() {
                     Explore <span className="category-explore-arrow">→</span>
                   </span>
                 </div>
-              </div>
-            </motion.a>
+              </Link>
+            </motion.div>
           ))}
         </motion.div>
       </div>

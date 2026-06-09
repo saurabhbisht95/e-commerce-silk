@@ -35,7 +35,9 @@ const variantSchema = z.object({
 
 export const productQuerySchema = paginationQuerySchema.extend({
   search: z.string().optional(),
-  category: objectIdSchema.optional(),
+  category: z.string().trim().optional(),
+  categorySlug: z.string().trim().optional(),
+  categoryName: z.string().trim().optional(),
   brand: z.string().optional(),
   minPrice: z.coerce.number().min(0).optional(),
   maxPrice: z.coerce.number().min(0).optional(),

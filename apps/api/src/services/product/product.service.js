@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Category } from '../../models/Category.js';
 import { Product } from '../../models/Product.js';
 import { productRepository } from '../../repositories/product.repository.js';
@@ -7,6 +8,9 @@ import { PRODUCT_STATUS } from '../../constants/enums.js';
 import { toProductDTO, toProductListDTO } from './product.presenter.js';
 
 const ensureSlug = payload => payload.slug || createSlug(payload.name);
+const EMPTY_CATEGORY_ID = '000000000000000000000000';
+
+const escapeRegex = value => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const ensureCategory = async categoryId => {
   const category = await Category.findOne({ _id: categoryId, deletedAt: null });
@@ -14,9 +18,45 @@ const ensureCategory = async categoryId => {
   return category;
 };
 
+const resolveCategoryQuery = async query => {
+  const categoryValue = query.categorySlug || query.categoryName || query.category;
+  if (!categoryValue) return query;
+
+  const nextQuery = { ...query };
+  delete nextQuery.categorySlug;
+  delete nextQuery.categoryName;
+
+  if (mongoose.isValidObjectId(categoryValue)) {
+    nextQuery.category = categoryValue;
+    return nextQuery;
+  }
+
+  const normalizedSlug = createSlug(categoryValue);
+  const slugCandidates = [...new Set([
+    normalizedSlug,
+    normalizedSlug.endsWith('s') ? normalizedSlug.slice(0, -1) : `${normalizedSlug}s`
+  ])];
+  const nameCandidates = [...new Set([
+    String(categoryValue),
+    String(categoryValue).endsWith('s') ? String(categoryValue).slice(0, -1) : `${categoryValue}s`
+  ])];
+  const category = await Category.findOne({
+    deletedAt: null,
+    isActive: true,
+    $or: [
+      ...slugCandidates.map(slug => ({ slug })),
+      ...nameCandidates.map(name => ({ name: new RegExp(`^${escapeRegex(name)}$`, 'i') }))
+    ]
+  }).select('_id');
+
+  nextQuery.category = category?._id?.toString() || EMPTY_CATEGORY_ID;
+  return nextQuery;
+};
+
 export const productService = {
   async listProducts(query, options = {}) {
-    const result = await productRepository.listProducts(query, options);
+    const resolvedQuery = await resolveCategoryQuery(query);
+    const result = await productRepository.listProducts(resolvedQuery, options);
     return {
       products: toProductListDTO(result.items),
       meta: result.meta

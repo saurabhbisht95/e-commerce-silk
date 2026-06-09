@@ -117,12 +117,20 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 .results-count {
   font-family: var(--font-body);
   font-size: var(--text-sm);
   color: var(--color-muted);
+}
+
+.shop-data-note {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-gold-dark);
 }
 
 /* Shop Grid */
@@ -246,6 +254,28 @@
 .shop-product-card:hover .sp-actions-pill {
   right: 16px; /* Slides in */
   opacity: 1;
+}
+
+.shop-empty-state {
+  margin-top: var(--space-8);
+  padding: var(--space-8);
+  text-align: center;
+  border: 1px solid rgba(110, 30, 30, 0.14);
+  background: rgba(245, 233, 220, 0.62);
+}
+
+.shop-empty-state h3 {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: 400;
+  color: var(--color-maroon);
+}
+
+.shop-empty-state p {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--color-muted);
 }
 
 .sp-action-btn {
