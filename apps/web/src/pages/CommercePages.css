@@ -48,6 +48,24 @@
   max-width: none;
 }
 
+.commerce-form--embedded {
+  max-width: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.commerce-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.commerce-section-heading h2 {
+  margin: 0;
+}
+
 .commerce-field {
   display: grid;
   gap: 7px;
@@ -95,6 +113,53 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.commerce-actions--end {
+  justify-content: flex-end;
+}
+
+.commerce-actions--compact {
+  gap: 8px;
+}
+
+.commerce-actions--compact .commerce-btn {
+  min-height: 38px;
+  padding: 0 16px;
+}
+
+.commerce-checkline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(110, 30, 30, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.56);
+  padding: 12px 14px;
+}
+
+.commerce-checkline input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--color-maroon);
+  flex: 0 0 auto;
+}
+
+.commerce-checkline span {
+  display: grid;
+  gap: 2px;
+}
+
+.commerce-checkline strong {
+  color: var(--color-maroon);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.commerce-checkline small {
+  color: rgba(74, 16, 16, 0.68);
+  font-size: 0.9rem;
 }
 
 .commerce-location-tools {
@@ -251,6 +316,24 @@
   align-items: start;
 }
 
+.account-address-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 22px;
+  align-items: start;
+  margin-top: 22px;
+}
+
+.account-address-form-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.account-footer-actions {
+  justify-content: flex-end;
+  margin-top: 22px;
+}
+
 .admin-thumb {
   width: 58px;
   height: 72px;
@@ -259,7 +342,8 @@
 }
 
 @media (max-width: 860px) {
-  .admin-layout {
+  .admin-layout,
+  .account-address-layout {
     grid-template-columns: 1fr;
   }
 
@@ -272,6 +356,15 @@
   .commerce-field-row,
   .commerce-location-tools {
     grid-template-columns: 1fr;
+  }
+
+  .commerce-section-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .commerce-checkline {
+    align-items: flex-start;
   }
 
   .commerce-actions {

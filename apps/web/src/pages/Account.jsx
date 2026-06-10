@@ -25,6 +25,27 @@ const emptyAddress = {
   isDefault: false,
 }
 
+const addressFieldRows = [
+  ['label'],
+  ['fullName', 'phone'],
+  ['line1'],
+  ['line2'],
+  ['city', 'state'],
+  ['postalCode', 'country'],
+]
+
+const addressFieldLabels = {
+  label: 'Label',
+  fullName: 'Full Name',
+  phone: 'Phone',
+  line1: 'Address Line 1',
+  line2: 'Address Line 2',
+  city: 'City',
+  state: 'State',
+  postalCode: 'Postal Code',
+  country: 'Country',
+}
+
 function Account() {
   const navigate = useNavigate()
   const toast = useToast()
@@ -179,60 +200,47 @@ function Account() {
             )}
           </div>
 
-          <div className="admin-layout" style={{ marginTop: 22 }}>
-            <section className="commerce-form commerce-form--wide">
-              <h2>{addressForm.id ? 'Edit Address' : 'Add Address'}</h2>
+          <div className="account-address-layout">
+            <section className="commerce-panel account-address-form-panel">
+              <div className="commerce-section-heading">
+                <h2>{addressForm.id ? 'Edit Address' : 'Add Address'}</h2>
+                {addressForm.id && (
+                  <button className="commerce-btn commerce-btn--ghost" type="button" onClick={resetAddressForm} disabled={isSavingAddress}>
+                    New Address
+                  </button>
+                )}
+              </div>
               {addressMessage && <div className="commerce-alert">{addressMessage}</div>}
-              <form className="commerce-form commerce-form--wide" onSubmit={saveAddress} noValidate>
-                <label className="commerce-field">
-                  <span>Label</span>
-                  <input name="label" value={addressForm.label} onChange={updateAddressField} />
+              <form className="commerce-form commerce-form--embedded" onSubmit={saveAddress} noValidate>
+                {addressFieldRows.map(row => (
+                  <div className={`commerce-field-row${row.length === 1 ? ' commerce-field-row--single' : ''}`} key={row.join('-')}>
+                    {row.map(key => (
+                      <label className="commerce-field" key={key}>
+                        <span>{addressFieldLabels[key]}</span>
+                        <input
+                          name={key}
+                          value={addressForm[key]}
+                          onChange={updateAddressField}
+                          required={!['label', 'line2'].includes(key)}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                ))}
+                <label className="commerce-checkline">
+                  <input name="isDefault" type="checkbox" checked={addressForm.isDefault} onChange={updateAddressField} />
+                  <span>
+                    <strong>Default Address</strong>
+                    <small>Use this address first during checkout.</small>
+                  </span>
                 </label>
-                <label className="commerce-field">
-                  <span>Full Name</span>
-                  <input name="fullName" value={addressForm.fullName} onChange={updateAddressField} required />
-                </label>
-                <label className="commerce-field">
-                  <span>Phone</span>
-                  <input name="phone" value={addressForm.phone} onChange={updateAddressField} required />
-                </label>
-                <label className="commerce-field">
-                  <span>Address Line 1</span>
-                  <input name="line1" value={addressForm.line1} onChange={updateAddressField} required />
-                </label>
-                <label className="commerce-field">
-                  <span>Address Line 2</span>
-                  <input name="line2" value={addressForm.line2} onChange={updateAddressField} />
-                </label>
-                <div className="commerce-grid">
-                  <label className="commerce-field">
-                    <span>City</span>
-                    <input name="city" value={addressForm.city} onChange={updateAddressField} required />
-                  </label>
-                  <label className="commerce-field">
-                    <span>State</span>
-                    <input name="state" value={addressForm.state} onChange={updateAddressField} required />
-                  </label>
-                </div>
-                <div className="commerce-grid">
-                  <label className="commerce-field">
-                    <span>Postal Code</span>
-                    <input name="postalCode" value={addressForm.postalCode} onChange={updateAddressField} required />
-                  </label>
-                  <label className="commerce-field">
-                    <span>Country</span>
-                    <input name="country" value={addressForm.country} onChange={updateAddressField} required />
-                  </label>
-                </div>
-                <label className="commerce-field">
-                  <span>Default</span>
-                  <label><input name="isDefault" type="checkbox" checked={addressForm.isDefault} onChange={updateAddressField} /> Use as default address</label>
-                </label>
-                <div className="commerce-actions">
+                <div className="commerce-actions commerce-actions--end">
                   <button className="commerce-btn" type="submit" disabled={isSavingAddress}>
                     {isSavingAddress ? 'Saving...' : 'Save Address'}
                   </button>
-                  <button className="commerce-btn commerce-btn--ghost" type="button" onClick={resetAddressForm} disabled={isSavingAddress}>New Address</button>
+                  {!addressForm.id && (
+                    <button className="commerce-btn commerce-btn--ghost" type="button" onClick={resetAddressForm} disabled={isSavingAddress}>Clear</button>
+                  )}
                 </div>
               </form>
             </section>
@@ -250,7 +258,7 @@ function Account() {
                       <h3>{address.label || 'Address'} {address.isDefault ? '(Default)' : ''}</h3>
                       <p>{address.fullName} - {address.phone}</p>
                       <p className="commerce-muted">{address.line1}{address.line2 ? `, ${address.line2}` : ''}, {address.city}, {address.state} {address.postalCode}</p>
-                      <div className="commerce-actions">
+                      <div className="commerce-actions commerce-actions--compact">
                         <button className="commerce-btn commerce-btn--ghost" type="button" onClick={() => editAddress(address)} disabled={isSavingAddress}>Edit</button>
                         {!address.isDefault && (
                           <button className="commerce-btn commerce-btn--ghost" type="button" onClick={() => setDefaultAddress(address)} disabled={isSavingAddress}>Set Default</button>
@@ -264,7 +272,7 @@ function Account() {
             </section>
           </div>
 
-          <div className="commerce-actions" style={{ marginTop: 22 }}>
+          <div className="commerce-actions account-footer-actions">
             <button className="commerce-btn" type="button" onClick={handleLogout}>Logout</button>
           </div>
         </div>
