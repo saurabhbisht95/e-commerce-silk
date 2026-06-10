@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { FaMapMarkerAlt } from 'react-icons/fa'
 import Header from '../components/layout/Header.jsx'
 import Footer from '../components/layout/Footer.jsx'
 import { addressApi } from '../api/addresses'
+import { locationApi } from '../api/location'
 import { orderApi } from '../api/orders'
 import { useAuth } from '../context/authContext'
 import { useCommerce } from '../context/commerceContext'
@@ -22,6 +24,53 @@ const initialAddress = {
   country: 'India',
 }
 
+const addressFieldRows = [
+  ['fullName', 'phone'],
+  ['line1'],
+  ['line2'],
+  ['city', 'state'],
+  ['postalCode', 'country'],
+]
+
+const addressFieldLabels = {
+  fullName: 'Full Name',
+  phone: 'Phone',
+  line1: 'Address Line 1',
+  line2: 'Address Line 2',
+  city: 'City',
+  state: 'State',
+  postalCode: 'Postal Code',
+  country: 'Country',
+}
+
+const locationRequestOptions = {
+  enableHighAccuracy: true,
+  timeout: 15000,
+  maximumAge: 60000,
+}
+
+const getCurrentPosition = () =>
+  new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, locationRequestOptions)
+  })
+
+const getLocationErrorMessage = error => {
+  if (error?.code === 1) return 'Location permission was blocked. Please allow location access or enter the address manually.'
+  if (error?.code === 2) return 'Could not read your current location. Please check GPS/network and try again.'
+  if (error?.code === 3) return 'Location request timed out. Please try again.'
+  return toUserMessage(error, 'Could not detect your current address. Please enter it manually.')
+}
+
+const mergeDetectedAddress = (current, detected = {}) => ({
+  ...current,
+  line1: detected.line1 || current.line1,
+  line2: detected.line2 || current.line2,
+  city: detected.city || current.city,
+  state: detected.state || current.state,
+  postalCode: detected.postalCode || current.postalCode,
+  country: detected.country || current.country || 'India',
+})
+
 function Checkout() {
   const navigate = useNavigate()
   const toast = useToast()
@@ -31,6 +80,7 @@ function Checkout() {
   const [savedAddresses, setSavedAddresses] = useState([])
   const [message, setMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLocating, setIsLocating] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -78,6 +128,36 @@ function Checkout() {
       postalCode: address.postalCode || '',
       country: address.country || 'India',
     })
+  }
+
+  const useCurrentLocation = async () => {
+    if (!navigator.geolocation) {
+      const unsupportedMessage = 'Your browser does not support location access. Please enter the address manually.'
+      setMessage(unsupportedMessage)
+      toast.warning(unsupportedMessage)
+      return
+    }
+
+    setIsLocating(true)
+    setMessage('')
+    try {
+      const position = await getCurrentPosition()
+      const detectedAddress = await locationApi.reverseGeocode({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      })
+
+      if (!detectedAddress) throw new Error('Address not found')
+
+      setShippingAddress(current => mergeDetectedAddress(current, detectedAddress))
+      toast.success('Current location added. Please confirm the address before placing your order.')
+    } catch (error) {
+      const errorMessage = getLocationErrorMessage(error)
+      setMessage(errorMessage)
+      toast.warning(errorMessage)
+    } finally {
+      setIsLocating(false)
+    }
   }
 
   const submitOrder = async event => {
@@ -158,11 +238,32 @@ function Checkout() {
                     </select>
                   </label>
                 )}
-                {Object.entries(shippingAddress).map(([key, value]) => (
-                  <label className="commerce-field" key={key}>
-                    <span>{key.replace(/([A-Z])/g, ' $1')}</span>
-                    <input name={key} value={value} onChange={updateField} required={!['line2'].includes(key)} />
-                  </label>
+                <div className="commerce-location-tools">
+                  <button
+                    className="commerce-btn commerce-btn--ghost"
+                    type="button"
+                    onClick={useCurrentLocation}
+                    disabled={isLocating || isSubmitting}
+                  >
+                    <FaMapMarkerAlt aria-hidden="true" />
+                    {isLocating ? 'Detecting Address...' : 'Use My Current Location'}
+                  </button>
+                  <p>Allow location access to auto-fill the address. Please check house number and landmark before placing the order.</p>
+                </div>
+                {addressFieldRows.map(row => (
+                  <div className={`commerce-field-row${row.length === 1 ? ' commerce-field-row--single' : ''}`} key={row.join('-')}>
+                    {row.map(key => (
+                      <label className="commerce-field" key={key}>
+                        <span>{addressFieldLabels[key]}</span>
+                        <input
+                          name={key}
+                          value={shippingAddress[key]}
+                          onChange={updateField}
+                          required={key !== 'line2'}
+                        />
+                      </label>
+                    ))}
+                  </div>
                 ))}
                 <button className="commerce-btn" type="submit" disabled={isSubmitting}>
                   {isSubmitting ? 'Placing Order...' : 'Place COD Order'}

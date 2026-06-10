@@ -218,6 +218,12 @@ export const resolveMediaUrl = url => {
   return url
 }
 
+const normalizeOrder = order => ({
+  ...order,
+  id: order.id || order._id || order.mongoId,
+  mongoId: order.mongoId || order._id || order.id,
+})
+
 export const adminApi = {
   async health() {
     const response = await fetchWithTimeout(apiConfig.healthUrl, { credentials: 'include' })
@@ -296,7 +302,7 @@ export const adminApi = {
   async listOrders(params = {}) {
     const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== '' && value != null)).toString()
     const payload = await adminRequest(`/orders${query ? `?${query}` : ''}`)
-    return { orders: payload.data?.orders || [], meta: payload.meta || {} }
+    return { orders: (payload.data?.orders || []).map(normalizeOrder), meta: payload.meta || {} }
   },
   async updateOrderStatus(id, body) {
     const payload = await adminRequest(`/orders/${id}/status`, { method: 'PATCH', body })

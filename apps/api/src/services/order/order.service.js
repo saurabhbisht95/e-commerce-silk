@@ -3,6 +3,7 @@ import { Cart } from '../../models/Cart.js';
 import { Order } from '../../models/Order.js';
 import { Product } from '../../models/Product.js';
 import { ORDER_STATUS, PAYMENT_PROVIDERS, PAYMENT_STATUS } from '../../constants/enums.js';
+import { logger } from '../../config/logger.js';
 import { orderRepository } from '../../repositories/order.repository.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { buildInvoicePayload } from '../../utils/invoice.js';
@@ -36,6 +37,54 @@ const buildItemsFromCart = cart =>
     unitPrice: item.priceSnapshot,
     total: item.priceSnapshot * item.quantity
   }));
+
+const defaultStatusNotes = {
+  [ORDER_STATUS.PENDING]: 'Order is pending confirmation.',
+  [ORDER_STATUS.PAID]: 'Payment received.',
+  [ORDER_STATUS.PROCESSING]: 'Order is being prepared.',
+  [ORDER_STATUS.SHIPPED]: 'Order has been shipped.',
+  [ORDER_STATUS.DELIVERED]: 'Order has been delivered.',
+  [ORDER_STATUS.CANCELLED]: 'Order has been cancelled.',
+  [ORDER_STATUS.REFUNDED]: 'Order has been refunded.'
+};
+
+const ensureOrderStateContainers = order => {
+  if (!order.payment) {
+    order.payment = {
+      provider: PAYMENT_PROVIDERS.COD,
+      status: PAYMENT_STATUS.PENDING
+    };
+  }
+
+  if (!Array.isArray(order.statusHistory)) order.statusHistory = [];
+};
+
+const restoreOrderStock = async ({ order, reason, actorId }) => {
+  for (const item of order.items) {
+    await inventoryService.adjustStock({
+      productId: item.product,
+      variantSku: item.variantSku,
+      change: item.quantity,
+      type: 'order_cancelled',
+      reason,
+      orderId: order._id,
+      changedBy: actorId
+    });
+  }
+};
+
+const sendStatusNotification = async ({ order, previousStatus, note }) => {
+  if (!order.customer?.email) return;
+
+  try {
+    await emailService.sendOrderStatusUpdate(order, { previousStatus, note });
+  } catch (error) {
+    logger.warn(
+      { err: error, orderId: order._id, orderNumber: order.orderNumber },
+      'Order status notification could not be sent'
+    );
+  }
+};
 
 export const orderService = {
   listMyOrders(userId, query) {
@@ -121,22 +170,14 @@ export const orderService = {
       throw ApiError.badRequest('Order cannot be cancelled in its current status');
     }
 
-    for (const item of order.items) {
-      await inventoryService.adjustStock({
-        productId: item.product,
-        variantSku: item.variantSku,
-        change: item.quantity,
-        type: 'order_cancelled',
-        reason,
-        orderId: order._id,
-        changedBy: actorId
-      });
-    }
+    const previousStatus = order.status;
+    await restoreOrderStock({ order, reason, actorId });
 
     order.status = ORDER_STATUS.CANCELLED;
     order.cancellation = { reason, cancelledAt: new Date(), cancelledBy: actorId };
     order.statusHistory.push({ status: ORDER_STATUS.CANCELLED, note: reason, changedBy: actorId });
     await order.save();
+    await sendStatusNotification({ order, previousStatus, note: reason });
     return order;
   },
 
@@ -152,13 +193,38 @@ export const orderService = {
   async updateStatus(id, { status, note, actorId }) {
     const order = await Order.findOne({ _id: id, deletedAt: null });
     if (!order) throw ApiError.notFound('Order not found');
+    if (order.status === status) return order;
+
+    const previousStatus = order.status;
+    if (
+      previousStatus === ORDER_STATUS.REFUNDED ||
+      (previousStatus === ORDER_STATUS.CANCELLED && status !== ORDER_STATUS.REFUNDED)
+    ) {
+      throw ApiError.badRequest('Cancelled or refunded orders cannot be moved back into fulfillment');
+    }
+
+    ensureOrderStateContainers(order);
+    const statusNote = note?.trim() || defaultStatusNotes[status] || `Order marked as ${status}.`;
+
+    if (status === ORDER_STATUS.CANCELLED) {
+      await restoreOrderStock({ order, reason: statusNote, actorId });
+      order.cancellation = { reason: statusNote, cancelledAt: new Date(), cancelledBy: actorId };
+    }
+
     order.status = status;
     if (status === ORDER_STATUS.PAID) {
       order.payment.status = PAYMENT_STATUS.PAID;
       order.payment.paidAt = order.payment.paidAt || new Date();
     }
-    order.statusHistory.push({ status, note, changedBy: actorId });
+
+    if (status === ORDER_STATUS.REFUNDED) {
+      order.payment.status = PAYMENT_STATUS.REFUNDED;
+      order.payment.refundedAt = order.payment.refundedAt || new Date();
+    }
+
+    order.statusHistory.push({ status, note: statusNote, changedBy: actorId });
     await order.save();
+    await sendStatusNotification({ order, previousStatus, note: statusNote });
     return order;
   },
 

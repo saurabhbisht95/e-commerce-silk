@@ -571,8 +571,14 @@ function App() {
 
   const updateOrderStatus = async (order, status) => {
     if (!status || status === order.status) return
+    const orderId = order.id || order.mongoId || order._id
+    if (!orderId) {
+      notify('error', 'Order id is missing. Refresh the admin panel and try again.')
+      return
+    }
+
     try {
-      await adminApi.updateOrderStatus(order.id, { status, note: 'Updated from separated admin panel' })
+      await adminApi.updateOrderStatus(orderId, { status, note: `Order marked as ${status}.` })
       await loadAdminData()
       notify('success', `Order ${order.orderNumber} updated.`)
     } catch (error) {
