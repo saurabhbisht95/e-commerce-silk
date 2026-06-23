@@ -1,6 +1,6 @@
 import { Cart } from '../../models/Cart.js';
 import { Product } from '../../models/Product.js';
-import { cartRepository } from '../../repositories/cart.repository.js';
+import { CART_PRODUCT_FIELDS, cartRepository } from '../../repositories/cart.repository.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { couponService } from '../coupon/coupon.service.js';
 import { inventoryService } from '../inventory/inventory.service.js';
@@ -17,6 +17,7 @@ const getProductPrice = (product, variantSku) => {
 };
 
 const buildSnapshot = (product) => ({
+  legacyId: product.legacyId,
   name: product.name,
   slug: product.slug,
   image: product.images?.[0]?.url || '',
@@ -37,7 +38,7 @@ export const cartService = {
   },
 
   async recalculate(cart) {
-    await cart.populate('items.product', 'name slug sku images price stock variants status deletedAt');
+    await cart.populate('items.product', CART_PRODUCT_FIELDS);
     const subtotal = cart.items.reduce((sum, item) => sum + item.priceSnapshot * item.quantity, 0);
     let discount = 0;
 
@@ -145,7 +146,7 @@ export const cartService = {
     if (!guestId) return this.getCart({ userId });
     const [userCart, guestCart] = await Promise.all([
       this.getCart({ userId }),
-      Cart.findOne({ guestId }).populate('items.product', 'name slug sku images price stock variants status deletedAt')
+      Cart.findOne({ guestId }).populate('items.product', CART_PRODUCT_FIELDS)
     ]);
     if (!guestCart) return userCart;
 

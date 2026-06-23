@@ -16,7 +16,7 @@ const cartItemToProduct = item => {
 
   return normalizeProduct({
     ...product,
-    id: product.legacyId || product.id || product._id || item.product,
+    id: product.legacyId || snapshot.legacyId || product.id || product._id || item.product,
     mongoId: product.mongoId || product._id || item.product,
     name: snapshot.name || product.name,
     category: product.category?.name || product.category,

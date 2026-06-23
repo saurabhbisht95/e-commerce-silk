@@ -61,6 +61,12 @@ export const uploadService = {
       }));
     }
 
+    if (config.isProduction) {
+      throw new Error(
+        'Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET before uploading production images.'
+      );
+    }
+
     return Promise.all(files.map(uploadLocal));
   }
 };

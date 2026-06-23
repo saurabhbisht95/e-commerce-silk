@@ -2,8 +2,19 @@ import { PRODUCTS as STATIC_PRODUCTS } from '../data/products'
 import { apiRequest, resolveApiAssetUrl } from './http'
 
 const fallbackById = new Map(STATIC_PRODUCTS.map(product => [String(product.id), product]))
+const fallbackByName = new Map(STATIC_PRODUCTS.map(product => [String(product.name).trim().toLowerCase(), product]))
 
-const isExternalAsset = url => /^https?:\/\//.test(url || '') || /^data:/.test(url || '') || /^blob:/.test(url || '')
+const isExternalAsset = url => {
+  if (/^data:/.test(url || '') || /^blob:/.test(url || '')) return true
+  if (!/^https?:\/\//.test(url || '')) return false
+
+  try {
+    const hostname = new URL(url).hostname
+    return !['localhost', '127.0.0.1', '::1'].includes(hostname)
+  } catch {
+    return false
+  }
+}
 const isApiUploadAsset = url => String(url || '').startsWith('/uploads')
 
 export const getBackendProductId = product => {
@@ -13,7 +24,8 @@ export const getBackendProductId = product => {
 }
 
 export const normalizeProduct = product => {
-  const fallback = fallbackById.get(String(product.id || product.legacyId || ''))
+  const fallback = fallbackById.get(String(product.legacyId || product.id || ''))
+    || fallbackByName.get(String(product.name || '').trim().toLowerCase())
   const image = isExternalAsset(product.image) || isApiUploadAsset(product.image)
     ? resolveApiAssetUrl(product.image)
     : fallback?.image || product.image

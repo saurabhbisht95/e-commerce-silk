@@ -22,6 +22,7 @@ const cartItemSchema = new Schema(
       min: 0
     },
     productSnapshot: {
+      legacyId: Number,
       name: String,
       slug: String,
       image: String,
