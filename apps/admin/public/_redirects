@@ -1,0 +1,6 @@
+/api/*      https://e-commerce-silk.onrender.com/api/:splat      200
+/healthz    https://e-commerce-silk.onrender.com/healthz         200
+/uploads/*  https://e-commerce-silk.onrender.com/uploads/:splat  200
+/api-docs   https://e-commerce-silk.onrender.com/api-docs        200
+/api-docs/* https://e-commerce-silk.onrender.com/api-docs/:splat 200
+/*          /index.html                                          200

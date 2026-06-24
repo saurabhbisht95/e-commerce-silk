@@ -44,9 +44,12 @@ const addressFieldLabels = {
 }
 
 const locationRequestOptions = {
-  enableHighAccuracy: true,
-  timeout: 15000,
-  maximumAge: 60000,
+  // Network-assisted positioning is much more reliable on laptops and hosted
+  // sites. The previous forced GPS/high-accuracy mode often returned code 2
+  // (POSITION_UNAVAILABLE) on devices without a dedicated GPS receiver.
+  enableHighAccuracy: false,
+  timeout: 20000,
+  maximumAge: 5 * 60 * 1000,
 }
 
 const getCurrentPosition = () =>
@@ -56,7 +59,7 @@ const getCurrentPosition = () =>
 
 const getLocationErrorMessage = error => {
   if (error?.code === 1) return 'Location permission was blocked. Please allow location access or enter the address manually.'
-  if (error?.code === 2) return 'Could not read your current location. Please check GPS/network and try again.'
+  if (error?.code === 2) return 'Your device could not determine its location. Turn on Location Services and Wi-Fi, allow location for this browser, then try again.'
   if (error?.code === 3) return 'Location request timed out. Please try again.'
   return toUserMessage(error, 'Could not detect your current address. Please enter it manually.')
 }
@@ -135,6 +138,13 @@ function Checkout() {
       const unsupportedMessage = 'Your browser does not support location access. Please enter the address manually.'
       setMessage(unsupportedMessage)
       toast.warning(unsupportedMessage)
+      return
+    }
+
+    if (!window.isSecureContext) {
+      const insecureMessage = 'Location access requires HTTPS. Please open the secure version of this website.'
+      setMessage(insecureMessage)
+      toast.warning(insecureMessage)
       return
     }
 
