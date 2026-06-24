@@ -1,4 +1,8 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
+// Production authentication relies on the hosting provider's same-origin /api
+// proxy. Calling Render directly makes the HttpOnly cookies third-party cookies.
+const API_BASE_URL = import.meta.env.PROD
+  ? '/api/v1'
+  : import.meta.env.VITE_API_URL || '/api/v1'
 const ENABLE_CSRF = import.meta.env.VITE_ENABLE_CSRF === 'true'
 const API_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS || 15000)
 
